@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en" class="w-full h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - NaNa</title>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen font-poppins w-full h-full text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div class="max-w-4xl mx-auto p-4 sm:p-6">
+        <header class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg mb-8 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold leading-relaxed">
+                Chat with {{ chat[1] }} - NaNa
+            </h1>
+        </header>
+
+        <main class="flex flex-col gap-6">
+            <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg transition">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        <i class="fas fa-comment-alt text-blue-500 dark:text-blue-400"></i> Messages
+                    </h2>
+                    <a href="{{ url_for('home') }}" class="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition min-h-12">Back to Home</a>
+                </div>
+                <div id="messages" class="space-y-4 max-h-[60vh] overflow-y-auto p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                    {% for message in messages %}
+                        <div class="flex {% if message[4] == user_id %}justify-end{% else %}justify-start{% endif %}">
+                            <div class="max-w-[70%] p-3 rounded-lg {% if message[4] == user_id %}bg-blue-500 text-white{% else %}bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200{% endif %}">
+                                <p class="text-sm font-medium">{{ message[3] }}</p>
+                                <p class="mt-1">{{ message[1] }}</p>
+                                <p class="text-xs text-gray-200 dark:text-gray-400 mt-1">{{ message[2] }}</p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <form id="messageForm" class="flex flex-col gap-4 mt-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <textarea id="messageContent" placeholder="Type your message..." required class="w-full p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-800 dark:text-gray-200 dark:bg-gray-700 min-h-20"></textarea>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition min-h-12">Send</button>
+                </form>
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center text-gray-500 dark:text-gray-400">
+            <div>
+                <a href="{{ url_for('logout') }}" class="text-blue-600 dark:text-blue-400 hover:underline font-semibold">Logout</a> | © 2025 Nana Social Network
+            </div>
+            <div class="mt-2">CEO's: Kasatkin K. and Gorbeshko A.</div>
+        </footer>
+    </div>
+
+    <script>
+        const socket = io.connect(window.location.origin);
+        const userId = {{ user_id | tojson }};
+        const chatId = {{ chat_id | tojson }};
+
+        socket.on('connect', () => {
+            console.log('Connected to SocketIO server');
+            socket.emit('join_room', userId);
+            console.log(`Joined user room: ${userId}`);
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('SocketIO connection error:', error);
+        });
+
+        socket.on('new_message', function(data) {
+            if (data.chat_id === chatId) {
+                console.log('New message received:', data);
+                const messagesContainer = document.getElementById('messages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flex ${data.sender_id === userId ? 'justify-end' : 'justify-start'}`;
+                messageDiv.innerHTML = `
+                    <div class="max-w-[70%] p-3 rounded-lg ${data.sender_id === userId ? 'bg-blue-500 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}">
+                        <p class="text-sm font-medium">${data.username}</p>
+                        <p class="mt-1">${data.content}</p>
+                        <p class="text-xs text-gray-200 dark:text-gray-400 mt-1">${data.created_at}</p>
+                    </div>
+                `;
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        });
+
+        socket.on('message_sent', function(data) {
+            if (data.chat_id === chatId && data.sender_id === userId) {
+                console.log('Message sent:', data);
+                const messagesContainer = document.getElementById('messages');
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        });
+
+        socket.on('update_notifications', function(data) {
+            if (data.user_id === userId) {
+                console.log('Received update_notifications:', data);
+                // Notifications are handled on the home page, so no action needed here
+            }
+        });
+
+        document.getElementById('messageForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const content = document.getElementById('messageContent').value.trim();
+            if (!content) {
+                alert('Please enter a message.');
+                return;
+            }
+            const csrfToken = document.querySelector('#messageForm input[name="csrf_token"]').value;
+            fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ chat_id: chatId, content })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('messageContent').value = '';
+                } else {
+                    console.error('Failed to send message:', data.message);
+                    alert('Failed to send message: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+                alert('Error sending message. Please try again.');
+            });
+        });
+
+        // Scroll to the bottom of the messages container on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+    </script>
+</body>
+</html>

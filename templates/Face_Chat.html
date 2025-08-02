@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru" class="w-full h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends List - NaNa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen font-poppins w-full h-full text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div class="max-w-4xl mx-auto p-4 sm:p-6">
+        <header class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg mb-8 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold leading-relaxed">
+                Ваши друзья
+            </h1>
+            <p class="mt-2 text-lg">Выберите друга, чтобы начать чат</p>
+        </header>
+        <main class="flex flex-col gap-6">
+            <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg transition">
+                <div id="friendsList" class="space-y-4">
+                    {% if friends %}
+                        {% for friend in friends %}
+                            <div class="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                <span>{{ friend.username or 'ID: ' ~ friend.id }}</span>
+                                <a href="{{ url_for('create_chat', friend_id=friend.id) }}" class="px-3 py-1 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition">
+                                    <i class="fas fa-comment"></i> Чат
+                                </a>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-center text-gray-500 dark:text-gray-400">У вас пока нет друзей.</p>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('face_detector') }}" class="mt-4 inline-block px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition">Назад</a>
+            </div>
+        </main>
+    </div>
+    <script>
+        // No need for dynamic loading since friends are rendered server-side
+    </script>
+</body>
+</html>

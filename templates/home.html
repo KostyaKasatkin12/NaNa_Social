@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en" class="w-full h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome, {{ username }}. Now you are part of - NaNa</title>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen font-poppins w-full h-full text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div class="max-w-4xl mx-auto p-4 sm:p-6">
+        <header class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg mb-8 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold leading-relaxed">
+                Welcome, {{ username }}. Now you are part of - NaNa
+            </h1>
+        </header>
+
+        <main class="flex flex-col md:flex-row gap-8 min-h-[calc(100vh-200px)]">
+            <!-- Left Sidebar (Friends and Friend Requests) -->
+            <div class="w-full md:w-1/5 flex flex-col gap-0 md:gap-6 md:flex-1 md:sticky md:top-6 h-[50vh]">
+                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg transition h-full overflow-y-auto">
+                    <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        <i class="fas fa-users text-blue-500 dark:text-blue-400"></i> Your Friends
+                    </h2>
+                    {% if friends %}
+                        <ul class="space-y-3 friend-list">
+                            {% for friend in friends %}
+                                <li class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user text-blue-500 dark:text-blue-400"></i>
+                                    </div>
+                                    <a href="{{ url_for('create_chat', friend_id=friend[1]) }}" class="text-blue-500 dark:text-blue-400 hover:underline font-medium">{{ friend[0] }}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-gray-500 dark:text-gray-400 italic">No friends yet.</p>
+                    {% endif %}
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg transition h-full overflow-y-auto">
+                    <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        <i class="fas fa-user-plus text-blue-500 dark:text-blue-400"></i> Friend Requests
+                    </h2>
+                    <ul class="space-y-3 friend-requests">
+                        {% for request in friend_requests %}
+                            <li class="flex justify-between items-center p-3 border-b border-gray-200 dark:border-gray-700" data-sender-id="{{ request[0] }}">
+                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ request[1] }}</span>
+                                <div class="flex gap-2">
+                                    <form action="{{ url_for('accept_friend', friend_id=request[0]) }}" method="POST" class="inline">
+                                        {{ search_form.hidden_tag() }}
+                                        <button type="submit" class="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition min-h-12">Accept</button>
+                                    </form>
+                                    <form action="{{ url_for('reject_friend', friend_id=request[0]) }}" method="POST" class="inline">
+                                        {{ search_form.hidden_tag() }}
+                                        <button type="submit" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 transition min-h-12">Reject</button>
+                                    </form>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="w-full md:w-3/5 flex flex-col gap-6">
+                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg transition">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                            <i class="fas fa-pen text-blue-500 dark:text-blue-400"></i> Create a Post
+                        </h2>
+                        <div class="flex gap-3">
+                            <a href="{{ url_for('face_detector') }}" class="px-4 py-2 bg-green-500 dark:bg-green-600 text-white rounded-lg hover:bg-green-600 dark:hover:bg-green-700 hover:scale-105 transition min-h-12">Capture Photo</a>
+                            <a href="{{ url_for('profile') }}" class="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition min-h-12">Edit Profile</a>
+                        </div>
+                    </div>
+                    <form id="postForm" method="POST" action="{{ url_for('create_post') }}" enctype="multipart/form-data" class="flex flex-col gap-4">
+                        {{ search_form.hidden_tag() }}
+                        <textarea name="content" id="postContent" placeholder="What's on your mind?" required class="w-full p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-800 dark:text-gray-200 dark:bg-gray-700 min-h-24"></textarea>
+                        <div id="photoPreview" class="mt-2"></div>
+                        <input type="hidden" name="photo_path" id="photoPath">
+                        <input type="hidden" name="emotion" id="emotionInput">
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Attach Image:
+                            <input type="file" name="image" accept="image/*" class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900 file:text-blue-500 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-800 mt-1"/>
+                        </label>
+                        <div class="flex gap-3">
+                            <button type="submit" class="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition min-h-12">Post</button>
+                            <button type="button" id="aiEnhanceBtn" class="px-4 py-2 bg-purple-500 dark:bg-purple-600 text-white rounded-lg hover:bg-purple-600 dark:hover:bg-purple-700 hover:scale-105 transition min-h-12">AI</button>
+                        </div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400 italic">Powered by NaNa_AI</div>
+                    </form>
+                </div>
+
+                <!-- Modal for Post Selection -->
+                <div id="postModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-lg">
+                        <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Choose Your Post</h2>
+                        <div class="mb-4">
+                            <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200">Original Post</h3>
+                            <p id="originalPost" class="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"></p>
+                            <button onclick="submitPost('original')" class="mt-2 px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition w-full">Post Original</button>
+                        </div>
+                        <div class="mb-4">
+                            <h3 class="text-lg font-medium text-gray-800 dark:text-gray-200">NaNa_AI Enhanced Post</h3>
+                            <p id="enhancedPost" class="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"></p>
+                            <button onclick="submitPost('enhanced')" class="mt-2 px-4 py-2 bg-purple-500 dark:bg-purple-600 text-white rounded-lg hover:bg-purple-600 dark:hover:bg-purple-700 hover:scale-105 transition w-full">Post Enhanced</button>
+                        </div>
+                        <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 transition w-full">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg transition">
+                    <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        <i class="fas fa-newspaper text-blue-500 dark:text-blue-400"></i> Posts
+                    </h2>
+                    <div id="posts">
+                        {% for post in posts %}
+                            <div class="post pb-4 mb-4 border-b border-gray-200 dark:border-gray-700" data-post-id="{{ post[0] }}">
+                                <p class="text-lg font-medium"><strong>{{ post[3] }}</strong> <span class="text-gray-500 dark:text-gray-400">({{ post[2] }})</span>
+                                    {% if post[9] %}
+                                        <span class="text-blue-500 dark:text-blue-400"> | Эмоция: {{ post[9] }}</span>
+                                    {% endif %}
+                                </p>
+                                <p class="text-gray-800 dark:text-gray-200 mt-1 leading-relaxed">{{ post[1] }}</p>
+                                {% if post[4] %}
+                                    <img src="{{ url_for('static', filename='avatars/' + post[4]) }}" alt="Post image" class="mt-4 max-w-full rounded-lg"/>
+                                {% endif %}
+                                <div class="flex gap-4 mt-3 items-center">
+                                    <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition" data-post-id="{{ post[0] }}">
+                                        {% if post[7] == 'like' %}Unlike{% else %}Like{% endif %}
+                                    </button>
+                                    <span class="like-count text-gray-500 dark:text-gray-400">{{ post[5] }} likes</span>
+                                    <button class="dislike-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition" data-post-id="{{ post[0] }}">
+                                        {% if post[7] == 'dislike' %}Undislike{% else %}Dislike{% endif %}
+                                    </button>
+                                    <span class="dislike-count text-gray-500 dark:text-gray-400">{{ post[6] }} dislikes</span>
+                                    <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition" data-post-id="{{ post[0] }}">Comment</button>
+                                </div>
+                                <!-- Latest Comment -->
+                                {% if post[8] %}
+                                    <div class="latest-comment mt-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg" id="latest-comment-{{ post[0] }}">
+                                        <p class="text-sm font-medium text-gray-800 dark:text-gray-200"><strong>{{ post[8][2] }}</strong> <span class="text-gray-500 dark:text-gray-400">({{ post[8][1] }})</span></p>
+                                        <p class="text-gray-700 dark:text-gray-300">{{ post[8][0] }}</p>
+                                    </div>
+                                {% else %}
+                                    <div class="latest-comment mt-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hidden" id="latest-comment-{{ post[0] }}"></div>
+                                {% endif %}
+                                <div class="comments-section mt-4 hidden" id="comments-{{ post[0] }}">
+                                    <div class="comments-list space-y-3"></div>
+                                    <form class="comment-form mt-3 flex flex-col gap-3" data-post-id="{{ post[0] }}">
+                                        <textarea name="comment_content" placeholder="Write a comment..." required class="w-full p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-700 dark:text-gray-300 dark:bg-gray-700 min-h-20"></textarea>
+                                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 hover:scale-105 transition">Send</button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg">
+                    <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        <i class="fas fa-search text-blue-400"></i> Search Friends
+                    </h2>
+                    <form method="POST" action="{{ url_for('search_user') }}" class="flex gap-3">
+                        {{ search_form.hidden_tag() }}
+                        <input type="text" name="username" placeholder="Search for users..." required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"/>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition min-h-[2.5rem]">Search</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right Sidebar (Chats and Notifications) -->
+            <div class="w-full md:w-1/5 flex flex-col gap-0 md:gap-6 md:flex-none md:sticky md:top-6 h-[50vh]">
+                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-xl h-full overflow-y-auto">
+                    <h2 class="text-xl sm:text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        <i class="fas fa-comment-alt text-blue-400"></i> Chats
+                    </h2>
+                    <ul id="chats-list" class="space-y-3">
+                        {% for chat in chats %}
+                            <li class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition" data-chat-id="{{ chat[0] }}">
+                                <a href="{{ url_for('chat', chat_id=chat[0]) }}" class="text-blue-600 dark:text-blue-400 hover:underline font-semibold">{{ chat[1] }}</a>
+                                {% if chat[2] > 0 %}
+                                    <span class="bg-blue-600 text-white text-xs font-semibold rounded-full px-2 py-1">{{ chat[2] }}</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-xl h-full overflow-y-auto">
+                    <form id="notifications-form" style="display: none;">
+                        {{ search_form.hidden_tag() }}
+                    </form>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                            <i class="fas fa-bell text-blue-400"></i> Notifications
+                        </h2>
+                        <button id="clear-notifications" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition min-h-[2.5rem]">Clear All</button>
+                    </div>
+                    <ul id="notifications-list" class="space-y-3">
+                        {% if notifications %}
+                            {% for notification in notifications %}
+                                <li class="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                    {{ notification[0] }}
+                                    {% if notification[1] %}
+                                        <span class="text-gray-500 dark:text-gray-400">({{ notification[1] }})</span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="p-3 text-gray-500 dark:text-gray-400 italic">No new notifications</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center text-gray-500 dark:text-gray-400">
+            <div>
+                <a href="{{ url_for('logout') }}" class="text-blue-600 dark:text-blue-400 hover:underline font-semibold">Logout</a> | © 2025 Nana Social Network
+            </div>
+            <div class="mt-2">CEO's: Kasatkin K. and Gorbeshko A.</div>
+        </footer>
+    </div>
+
+    <script>
+        const socket = io.connect(window.location.origin);
+        const userId = {{ session['user_id'] | tojson }};
+
+        socket.on('connect', () => {
+            console.log('Connected to SocketIO server');
+            socket.emit('join_room', userId);
+            console.log(`Joined user room: ${userId}`);
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('SocketIO connection error:', error);
+        });
+
+        socket.on('update_notifications', function(data) {
+            if (data.user_id !== userId) return;
+            console.log('Received update_notifications:', data);
+            const notificationsList = document.getElementById('notifications-list');
+            notificationsList.innerHTML = '';
+            if (data.notifications && data.notifications.length > 0) {
+                data.notifications.forEach(notification => {
+                    const li = document.createElement('li');
+                    li.className = 'p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition';
+                    const content = notification[0];
+                    const created_at = notification[1] ? ` <span class="text-gray-500 dark:text-gray-400">(${notification[1]})</span>` : '';
+                    li.innerHTML = content + created_at;
+                    notificationsList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.className = 'p-3 text-gray-500 dark:text-gray-400 italic';
+                li.textContent = 'No new notifications';
+                notificationsList.appendChild(li);
+            }
+        });
+
+        socket.on('new_message', function(data) {
+            if (data.sender_id !== userId) {
+                console.log('New message received:', data);
+                const chatsList = document.getElementById('chats-list');
+                const chatItem = chatsList.querySelector(`[data-chat-id="${data.chat_id}"]`);
+                if (chatItem) {
+                    const unreadSpan = chatItem.querySelector('span');
+                    let unreadCount = unreadSpan ? parseInt(unreadSpan.textContent) + 1 : 1;
+                    if (unreadSpan) {
+                        unreadSpan.textContent = unreadCount;
+                    } else {
+                        const newSpan = document.createElement('span');
+                        newSpan.className = 'bg-blue-500 dark:bg-blue-600 text-white text-xs px-2 py-1 rounded-full';
+                        newSpan.textContent = unreadCount;
+                        chatItem.appendChild(newSpan);
+                    }
+                }
+            }
+        });
+
+        document.getElementById('clear-notifications').addEventListener('click', () => {
+            const csrfToken = document.querySelector('#notifications-form input[name="csrf_token"]').value;
+            fetch('/clear_notifications', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Notifications cleared');
+                    const notificationsList = document.getElementById('notifications-list');
+                    notificationsList.innerHTML = '<li class="p-3 text-gray-500 dark:text-gray-400 italic">No new notifications</li>';
+                } else {
+                    console.error('Failed to clear notifications:', data.message);
+                    alert('Failed to clear notifications: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error clearing notifications:', error);
+                alert('Error clearing notifications. Please try again.');
+            });
+        });
+
+        socket.on('new_friend_request', function(data) {
+            if (data.sender_id !== userId) {
+                const friendRequests = document.querySelector('.friend-requests');
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 border-b border-gray-200 dark:border-gray-700';
+                li.dataset.senderId = data.sender_id;
+                li.innerHTML = `
+                    <span class="font-medium text-gray-700 dark:text-gray-300">${data.sender_username}</span>
+                    <div class="flex gap-2">
+                        <form action="/accept_friend/${data.sender_id}" method="POST" class="inline">
+                            <input type="hidden" name="csrf_token" value="${document.querySelector('#notifications-form input[name="csrf_token"]').value}">
+                            <button type="submit" class="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition min-h-12">Accept</button>
+                        </form>
+                        <form action="/reject_friend/${data.sender_id}" method="POST" class="inline">
+                            <input type="hidden" name="csrf_token" value="${document.querySelector('#notifications-form input[name="csrf_token"]').value}">
+                            <button type="submit" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 transition min-h-12">Reject</button>
+                        </form>
+                    </div>
+                `;
+                friendRequests.appendChild(li);
+            }
+        });
+
+        socket.on('friend_request_accepted', function(data) {
+            if (data.friend_id !== userId) {
+                const friendList = document.querySelector('.friend-list');
+                const li = document.createElement('li');
+                li.className = 'flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition';
+                li.innerHTML = `
+                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-blue-500 dark:text-blue-400"></i>
+                    </div>
+                    <a href="/create_chat/${data.friend_id}" class="text-blue-500 dark:text-blue-400 hover:underline font-medium">${data.friend_username}</a>
+                `;
+                friendList.appendChild(li);
+                const requestLi = document.querySelector(`.friend-requests li[data-sender-id="${data.friend_id}"]`);
+                if (requestLi) requestLi.remove();
+            }
+        });
+
+        socket.on('friend_request_rejected', function(data) {
+            if (data.friend_id !== userId) {
+                const requestLi = document.querySelector(`.friend-requests li[data-sender-id="${data.friend_id}"]`);
+                if (requestLi) requestLi.remove();
+            }
+        });
+
+        socket.on('new_post', function(data) {
+            const postsContainer = document.getElementById('posts');
+            const postDiv = document.createElement('div');
+            postDiv.className = 'post pb-4 mb-4 border-b border-gray-200 dark:border-gray-700';
+            postDiv.dataset.postId = data.id;
+            const emotion = data.emotion ? ` <span class="text-blue-500 dark:text-blue-400"> | Эмоция: ${data.emotion}</span>` : '';
+            postDiv.innerHTML = `
+                <p class="text-lg font-medium"><strong>${data.username}</strong> <span class="text-gray-500 dark:text-gray-400">(${data.created_at})</span>${emotion}</p>
+                <p class="text-gray-800 dark:text-gray-200 mt-1 leading-relaxed">${data.content}</p>
+                ${data.image ? `<img src="${url_for('static', filename='avatars/' + data.image)}" alt="Post image" class="mt-4 max-w-full rounded-lg"/>` : ''}
+                <div class="flex gap-4 mt-3 items-center">
+                    <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition" data-post-id="${data.id}">Like</button>
+                    <span class="like-count text-gray-500 dark:text-gray-400">${data.likes} likes</span>
+                    <button class="dislike-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition" data-post-id="${data.id}">Dislike</button>
+                    <span class="dislike-count text-gray-500 dark:text-gray-400">${data.dislikes} dislikes</span>
+                    <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition" data-post-id="${data.id}">Comment</button>
+                </div>
+                <div class="latest-comment mt-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hidden" id="latest-comment-${data.id}"></div>
+                <div class="comments-section mt-4 hidden" id="comments-${data.id}">
+                    <div class="comments-list space-y-3"></div>
+                    <form class="comment-form mt-3 flex flex-col gap-3" data-post-id="${data.id}">
+                        <textarea name="comment_content" placeholder="Write a comment..." required class="w-full p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-700 dark:text-gray-300 dark:bg-gray-700 min-h-20"></textarea>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 hover:scale-105 transition">Send</button>
+                    </form>
+                </div>
+            `;
+            postsContainer.prepend(postDiv);
+            attachCommentListeners();
+            attachReactionListeners();
+        });
+
+        socket.on('post_reaction_updated', function(data) {
+            const post = document.querySelector(`.post[data-post-id="${data.post_id}"]`);
+            if (post) {
+                const likeButton = post.querySelector('.like-btn');
+                const dislikeButton = post.querySelector('.dislike-btn');
+                const likeSpan = post.querySelector('.like-count');
+                const dislikeSpan = post.querySelector('.dislike-count');
+                likeButton.textContent = data.user_reaction === 'like' ? 'Unlike' : 'Like';
+                dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Undislike' : 'Dislike';
+                likeSpan.textContent = `${data.likes} likes`;
+                dislikeSpan.textContent = `${data.dislikes} dislikes`;
+            }
+        });
+
+        function attachReactionListeners() {
+            document.querySelectorAll('.like-btn').forEach(button => {
+                button.removeEventListener('click', handleLikeClick);
+                button.addEventListener('click', handleLikeClick);
+            });
+
+            document.querySelectorAll('.dislike-btn').forEach(button => {
+                button.removeEventListener('click', handleDislikeClick);
+                button.addEventListener('click', handleDislikeClick);
+            });
+        }
+
+        function handleLikeClick() {
+            const postId = this.dataset.postId;
+            const csrfToken = document.querySelector('#notifications-form input[name="csrf_token"]').value;
+            fetch(`/like_post/${postId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const post = document.querySelector(`.post[data-post-id="${postId}"]`);
+                    const likeButton = post.querySelector('.like-btn');
+                    const dislikeButton = post.querySelector('.dislike-btn');
+                    const likeSpan = post.querySelector('.like-count');
+                    const dislikeSpan = post.querySelector('.dislike-count');
+                    likeButton.textContent = data.user_reaction === 'like' ? 'Unlike' : 'Like';
+                    dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Undislike' : 'Dislike';
+                    likeSpan.textContent = `${data.likes} likes`;
+                    dislikeSpan.textContent = `${data.dislikes} dislikes`;
+                } else {
+                    alert('Error liking post: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error liking post:', error);
+                alert('Error liking post. Please try again.');
+            });
+        }
+
+        function handleDislikeClick() {
+            const postId = this.dataset.postId;
+            const csrfToken = document.querySelector('#notifications-form input[name="csrf_token"]').value;
+            fetch(`/dislike_post/${postId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const post = document.querySelector(`.post[data-post-id="${postId}"]`);
+                    const likeButton = post.querySelector('.like-btn');
+                    const dislikeButton = post.querySelector('.dislike-btn');
+                    const likeSpan = post.querySelector('.like-count');
+                    const dislikeSpan = post.querySelector('.dislike-count');
+                    likeButton.textContent = data.user_reaction === 'like' ? 'Unlike' : 'Like';
+                    dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Undislike' : 'Dislike';
+                    likeSpan.textContent = `${data.likes} likes`;
+                    dislikeSpan.textContent = `${data.dislikes} dislikes`;
+                } else {
+                    alert('Error disliking post: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error disliking post:', error);
+                alert('Error disliking post. Please try again.');
+            });
+        }
+
+        function submitPost(type) {
+            const postContent = document.getElementById('postContent');
+            if (type === 'original') {
+                postContent.value = document.getElementById('originalPost').textContent;
+            } else {
+                postContent.value = document.getElementById('enhancedPost').textContent;
+            }
+            document.getElementById('postForm').submit();
+        }
+
+        function closeModal() {
+            document.getElementById('postModal').classList.add('hidden');
+        }
+
+        document.getElementById('aiEnhanceBtn').addEventListener('click', () => {
+            const content = document.getElementById('postContent').value;
+            if (!content) {
+                alert('Please enter some text to enhance.');
+                return;
+            }
+            fetch('/enhance_post', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('#notifications-form input[name="csrf_token"]').value
+                },
+                body: JSON.stringify({ content })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('originalPost').textContent = data.original_content;
+                    document.getElementById('enhancedPost').textContent = data.enhanced_content;
+                    document.getElementById('postModal').classList.remove('hidden');
+                } else {
+                    alert('Error enhancing post: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error enhancing post:', error);
+                alert('Error enhancing post. Please try again.');
+            });
+        });
+
+        function fetchComments(postId) {
+            fetch(`/get_comments/${postId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const commentsList = document.querySelector(`#comments-${postId} .comments-list`);
+                    commentsList.innerHTML = '';
+                    if (data.status === 'success' && data.comments.length > 0) {
+                        data.comments.forEach(comment => {
+                            const commentDiv = document.createElement('div');
+                            commentDiv.className = 'p-3 bg-gray-100 dark:bg-gray-700 rounded-lg';
+                            commentDiv.innerHTML = `
+                                <p class="text-sm font-medium text-gray-800 dark:text-gray-200"><strong>${comment.username}</strong> <span class="text-gray-500 dark:text-gray-400">(${comment.created_at})</span></p>
+                                <p class="text-gray-700 dark:text-gray-300">${comment.content}</p>
+                            `;
+                            commentsList.appendChild(commentDiv);
+                        });
+                    } else {
+                        commentsList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 italic">No comments yet.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching comments:', error);
+                });
+        }
+
+        function attachCommentListeners() {
+            document.querySelectorAll('.comment-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const postId = button.dataset.postId;
+                    const commentsSection = document.getElementById(`comments-${postId}`);
+                    commentsSection.classList.toggle('hidden');
+                    if (!commentsSection.classList.contains('hidden')) {
+                        fetchComments(postId);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.comment-form').forEach(form => {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const postId = form.dataset.postId;
+                    const content = form.querySelector('textarea').value;
+                    fetch('/add_comment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('#notifications-form input[name="csrf_token"]').value
+                        },
+                        body: JSON.stringify({ post_id: postId, content })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            const commentsList = document.querySelector(`#comments-${postId} .comments-list`);
+                            const commentDiv = document.createElement('div');
+                            commentDiv.className = 'p-3 bg-gray-100 dark:bg-gray-700 rounded-lg';
+                            commentDiv.innerHTML = `
+                                <p class="text-sm font-medium text-gray-800 dark:text-gray-200"><strong>${data.username}</strong> <span class="text-gray-500 dark:text-gray-400">(${data.created_at})</span></p>
+                                <p class="text-gray-700 dark:text-gray-300">${content}</p>
+                            `;
+                            commentsList.appendChild(commentDiv);
+                            const latestComment = document.getElementById(`latest-comment-${postId}`);
+                            latestComment.innerHTML = `
+                                <p class="text-sm font-medium text-gray-800 dark:text-gray-200"><strong>${data.username}</strong> <span class="text-gray-500 dark:text-gray-400">(${data.created_at})</span></p>
+                                <p class="text-gray-700 dark:text-gray-300">${content}</p>
+                            `;
+                            latestComment.classList.remove('hidden');
+                            form.querySelector('textarea').value = '';
+                        } else {
+                            alert('Error adding comment: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error adding comment:', error);
+                        alert('Error adding comment. Please try again.');
+                    });
+                });
+            });
+        }
+
+        attachCommentListeners();
+        attachReactionListeners();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const photoPath = urlParams.get('photo_path');
+        const emotion = urlParams.get('emotion');
+        const content = urlParams.get('content');
+        if (photoPath) {
+            document.getElementById('photoPath').value = photoPath; // Use full path
+            const filename = photoPath.split('/').pop(); // Extract filename for preview
+            document.getElementById('photoPreview').innerHTML = `<img src="${url_for('static', filename='avatars/' + filename)}" alt="Captured photo" class="mt-4 max-w-full rounded-lg"/>`;
+            if (emotion) {
+                document.getElementById('emotionInput').value = emotion;
+            }
+            if (content) {
+                document.getElementById('postContent').value = content;
+            }
+        }
+    </script>
+</body>
+</html>
