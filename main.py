@@ -1124,17 +1124,13 @@ def handle_frame(data):
 
 if __name__ == '__main__':
     try:
-        # Если запускаемся в Google Colab, пробрасываем ngrok
-        if 'COLAB_GPU' in os.environ:
-            from flask_ngrok import run_with_ngrok
-            run_with_ngrok(app)
-
         init_db()
         logger.info("Starting Flask-SocketIO server...")
         socketio.run(app, debug=True, host='0.0.0.0', port=5000, use_reloader=False)
-
     except Exception as e:
         logger.error(f"Server startup failed: {e}")
         raise
+
+
 
 
