@@ -14,19 +14,20 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div id="root"></div>
-    <!-- Pass data from Flask to React as JSON -->
+    <!-- Pass data from Flask to React as JSON including CSRF token -->
     <script type="application/json" id="initial-data">
         {
             "user": {{ user | tojson }},
             "posts": {{ posts | tojson }},
             "friends": {{ friends | tojson }},
-            "cities": {{ cities | tojson }}
+            "cities": {{ cities | tojson }},
+            "csrf_token": {{ csrf_token() | tojson }}
         }
     </script>
     <script type="text/babel">
         console.log("Script loaded");
 
-        const { useState } = React;
+        const { useState, useEffect } = React;
 
         // Safely parse initial data
         let initialData;
@@ -35,7 +36,7 @@
             console.log("Initial data from Flask:", initialData);
         } catch (error) {
             console.error("Error parsing initial data:", error);
-            initialData = { user: ["Unknown", "", "не интересуюсь", null, ""], posts: [], friends: [], cities: [] };
+            initialData = { user: ["Unknown", "", "не интересуюсь", null, ""], posts: [], friends: [], cities: [], csrf_token: "" };
         }
 
         // Validate user data
@@ -64,6 +65,7 @@
             username: friend[0]
         }));
         const cities = initialData.cities;
+        const csrfToken = initialData.csrf_token;
 
         // Error Boundary Component
         class ErrorBoundary extends React.Component {
@@ -121,22 +123,32 @@
         };
 
         // AvatarUpload Component
-        const AvatarUpload = ({ onUpload }) => {
+        const AvatarUpload = ({ user, onUpload }) => {
             const [file, setFile] = useState(null);
 
             const handleUpload = () => {
                 if (file) {
                     const formData = new FormData();
                     formData.append("avatar", file);
+                    formData.append("csrf_token", csrfToken); // Ensure CSRF token is included
                     fetch("/profile", {
                         method: "POST",
-                        body: formData
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': csrfToken // Add CSRF token to headers as a fallback
+                        }
                     })
-                        .then(response => response.text())
-                        .then(() => {
-                            onUpload(file);
-                            setFile(null);
-                            window.location.reload();
+                        .then(response => {
+                            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.status === 'success' && data.avatar) {
+                                onUpload(data.avatar);
+                                setFile(null);
+                            } else {
+                                console.error("Upload failed:", data.message);
+                            }
                         })
                         .catch(error => console.error("Error uploading avatar:", error));
                 }
@@ -194,11 +206,18 @@
                 saveData.append("description", formData.description);
                 saveData.append("relationship_status", formData.relationshipStatus);
                 saveData.append("city", formData.city);
+                saveData.append("csrf_token", csrfToken); // Ensure CSRF token is included
                 fetch("/profile", {
                     method: "POST",
-                    body: saveData
+                    body: saveData,
+                    headers: {
+                        'X-CSRFToken': csrfToken // Add CSRF token to headers as a fallback
+                    }
                 })
-                    .then(response => response.text())
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.text();
+                    })
                     .then(() => {
                         onSave(formData);
                         window.location.reload();
@@ -279,11 +298,18 @@
                 saveData.append("description", initialUser.description || "");
                 saveData.append("relationship_status", status);
                 saveData.append("city", initialUser.city || "");
+                saveData.append("csrf_token", csrfToken); // Ensure CSRF token is included
                 fetch("/profile", {
                     method: "POST",
-                    body: saveData
+                    body: saveData,
+                    headers: {
+                        'X-CSRFToken': csrfToken // Add CSRF token to headers as a fallback
+                    }
                 })
-                    .then(response => response.text())
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.text();
+                    })
                     .then(() => {
                         onSave(status);
                         window.location.reload();
@@ -341,13 +367,16 @@
             const [friends] = useState(initialFriends);
             const [isEditing, setIsEditing] = useState(false);
 
-            const handleAvatarUpload = (file) => {
-                const avatarUrl = URL.createObjectURL(file);
-                setUser({ ...user, avatar: avatarUrl });
+            useEffect(() => {
+                console.log("User state updated:", user);
+            }, [user]);
+
+            const handleAvatarUpload = (newAvatarPath) => {
+                setUser({ ...user, avatar: newAvatarPath.startsWith('/static/avatars/') ? newAvatarPath : `/static/avatars/${newAvatarPath}` });
             };
 
             const handleProfileSave = (updatedUser) => {
-                setUser(updatedUser);
+                setUser({ ...user, ...updatedUser });
                 setIsEditing(false);
             };
 
@@ -383,7 +412,7 @@
                                 currentStatus={user.relationshipStatus}
                                 onSave={handleRelationshipStatusSave}
                             />
-                            <AvatarUpload onUpload={handleAvatarUpload} />
+                            <AvatarUpload user={user} onUpload={handleAvatarUpload} />
                             <FriendsList friends={friends} />
                             <a
                                 href="{{ url_for('home') }}"
