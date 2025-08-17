@@ -771,6 +771,10 @@ def profile():
     friends = cursor.fetchall()
     cities = ["Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань", "Нижний Новгород", "Челябинск", "Самара", "Омск", "Ростов-на-Дону"]
     if request.method == 'POST':
+        csrf_token = request.form.get('csrf_token')
+        if not csrf_token:
+            logger.error("CSRF token missing in request")
+            return jsonify({'status': 'error', 'message': 'CSRF token missing'}), 400
         description = request.form.get('description')
         relationship_status = request.form.get('relationship_status')
         city = request.form.get('city')
@@ -785,7 +789,7 @@ def profile():
                       (description, relationship_status, avatar_filename, city, user_id))
         conn.commit()
         flash('Profile updated successfully', 'success')
-        return redirect(url_for('profile'))
+        return jsonify({'status': 'success', 'avatar': f'/static/avatars/{avatar_filename}'})
     conn.close()
     return render_template('profile.html', user=user, posts=posts, friends=friends, cities=cities)
 
@@ -1139,8 +1143,5 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Server startup failed: {e}")
         raise
-
-
-
 
 
