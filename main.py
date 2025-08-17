@@ -1,13 +1,16 @@
 import eventlet
+
 eventlet.monkey_patch()
 
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow warnings
 import re
-from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, Response, send_from_directory
+from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, Response, \
+    send_from_directory
 from flask_socketio import SocketIO, emit, join_room
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
+from wtforms import StringField, PasswordField, SubmitField, FileField
 from wtforms.validators import DataRequired
 from flask_wtf.csrf import CSRFProtect
 import sqlite3
@@ -24,22 +27,24 @@ import google.generativeai as genai
 from langdetect import detect, DetectorFactory
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
 
 # Initialize Flask and SocketIO
 app = Flask(__name__)
 app.secret_key = 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5'  # Replace with a secure key
 app.config['UPLOAD_FOLDER'] = 'static/avatars'
+app.config['STORIES_FOLDER'] = 'static/stories'
 socketio = SocketIO(app, cors_allowed_origins="*")
 csrf = CSRFProtect(app)
 
 # Configure directories
-UPLOAD_FOLDER = 'static/avatars'
-USER_PHOTO_FOLDER = 'user_photo'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
+STORIES_FOLDER = app.config['STORIES_FOLDER']
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi'}  # Include video extensions
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-if not os.path.exists(USER_PHOTO_FOLDER):
-    os.makedirs(USER_PHOTO_FOLDER)
+if not os.path.exists(STORIES_FOLDER):
+    os.makedirs(STORIES_FOLDER)
 
 # Initialize emotion and hand detection
 emotion_detector = FER(mtcnn=True)
@@ -51,10 +56,12 @@ hands = mp_hands.Hands(
     min_tracking_confidence=0.8
 )
 
+
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
+
 
 class RegisterForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
@@ -63,6 +70,13 @@ class RegisterForm(FlaskForm):
     description = StringField('Description')
     city = StringField('City')
     submit = SubmitField('Register')
+
+
+class StoryForm(FlaskForm):
+    content = StringField('Content', validators=[DataRequired()])
+    image = FileField('Image', validators=[DataRequired()])
+    submit = SubmitField('Add Story')
+
 
 # Define gestures based on finger states (0 = down, 1 = up)
 GESTURES = {
@@ -101,9 +115,11 @@ morph = pymorphy.MorphAnalyzer()
 genai.configure(api_key="your_gemini_api_key")  # Replace with your actual API key
 gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
+
 # Form for adding friends
 class AddFriendForm(FlaskForm):
     submit = SubmitField('Добавить в друзья')
+
 
 # Database initialization
 def init_db():
@@ -177,6 +193,16 @@ def init_db():
         FOREIGN KEY (post_id) REFERENCES posts(id),
         FOREIGN KEY (user_id) REFERENCES users(id)
     )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS stories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        content TEXT,
+        image TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP,
+        views INTEGER DEFAULT 0,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )''')
     # Add missing columns if they don't exist
     cursor.execute("PRAGMA table_info(friends)")
     if 'created_at' not in [col[1] for col in cursor.fetchall()]:
@@ -193,8 +219,10 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def detect_gesture(landmarks):
     fingers = []
@@ -206,6 +234,7 @@ def detect_gesture(landmarks):
     if sum(fingers) >= 4:
         return "OPEN_HAND"
     return GESTURES.get(fingers_tuple, f"UNKNOWN ({sum(fingers)} fingers)")
+
 
 def process_emotions(frame):
     try:
@@ -229,6 +258,7 @@ def process_emotions(frame):
         logger.error(f"[Emotion] Error: {e}")
     return None, 0.0, (0, 0, 0, 0)
 
+
 def process_hands(frame):
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(rgb_frame)
@@ -239,6 +269,7 @@ def process_hands(frame):
             gesture = detect_gesture(hand_landmarks.landmark)
     return gesture
 
+
 def draw_finger_tips(frame, landmarks, image_width, image_height):
     for i, finger in enumerate([4, 8, 12, 16, 20]):
         x = int(landmarks[finger].x * image_width)
@@ -246,6 +277,7 @@ def draw_finger_tips(frame, landmarks, image_width, image_height):
         finger_name = ["thumb", "index", "middle", "ring", "pinky"][i]
         color = finger_colors[finger_name]
         cv2.circle(frame, (x, y), 10, color, -1)
+
 
 def send_notifications(user_id):
     conn = sqlite3.connect('nana.db')
@@ -266,8 +298,10 @@ def send_notifications(user_id):
              AND chat_messages.is_read = 0) > 0
     """, (user_id, user_id, user_id, user_id, user_id))
     unread_notifications = cursor.fetchall()
-    notifications = [(f"{username} sent you {unread_count} message(s)", None) for username, unread_count in unread_notifications]
-    cursor.execute("SELECT content, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+    notifications = [(f"{username} sent you {unread_count} message(s)", None) for username, unread_count in
+                     unread_notifications]
+    cursor.execute("SELECT content, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
+                   (user_id,))
     notifications.extend(cursor.fetchall())
     total_unread = len(notifications)
     conn.close()
@@ -278,10 +312,12 @@ def send_notifications(user_id):
         'total_unread': total_unread
     }, room=str(user_id))
 
+
 # Routes
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/x-icon')
+
 
 @app.route('/', methods=['GET'])
 def home():
@@ -357,16 +393,28 @@ def home():
              AND chat_messages.is_read = 0) > 0
     """, (user_id, user_id, user_id, user_id, user_id))
     unread_notifications = cursor.fetchall()
-    notifications = [(f"{username} sent you {unread_count} message(s)", None) for username, unread_count in unread_notifications]
-    cursor.execute("SELECT content, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+    notifications = [(f"{username} sent you {unread_count} message(s)", None) for username, unread_count in
+                     unread_notifications]
+    cursor.execute("SELECT content, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
+                   (user_id,))
     notifications.extend(cursor.fetchall())
+
+    # Fetch active stories only from friends (valid for 24 hours)
+    cursor.execute("""
+        SELECT s.id, s.user_id, s.content, s.image, s.created_at, s.expires_at, s.views 
+        FROM stories s
+        JOIN friends f ON s.user_id = f.friend_id
+        WHERE f.user_id = ? AND f.status = 'accepted' AND s.expires_at > ?
+    """, (user_id, datetime.now()))
+    stories = cursor.fetchall()
     conn.close()
     send_notifications(user_id)
     search_form = AddFriendForm()
     form = AddFriendForm()
     return render_template('home.html', username=user[0], posts=posts, friends=friends,
-                          friend_requests=friend_requests, notifications=notifications, chats=chats,
-                          search_form=search_form, form=form)
+                           friend_requests=friend_requests, notifications=notifications, chats=chats,
+                           search_form=search_form, form=form, stories=stories)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -390,11 +438,13 @@ def login():
         return render_template('login.html', form=form, error="Invalid username or password")
     return render_template('login.html', form=form)
 
+
 @app.route('/face_detector')
 def face_detector():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('NaNa_Face.html')
+
 
 @app.route('/face_chat')
 def face_chat():
@@ -411,6 +461,7 @@ def face_chat():
     friends = [{'id': row[0], 'username': row[1]} for row in cursor.fetchall()]
     conn.close()
     return render_template('Face_Chat.html', friends=friends)
+
 
 @app.route('/friends', methods=['POST'])
 def get_friends():
@@ -430,6 +481,7 @@ def get_friends():
     friends = [{'id': row[0], 'username': row[1]} for row in cursor.fetchall()]
     conn.close()
     return jsonify(friends)
+
 
 @app.route('/search_user', methods=['GET', 'POST'])
 def search_user():
@@ -455,6 +507,7 @@ def search_user():
     form = AddFriendForm()
     return render_template('search_results.html', users=users, form=form, friend_requests=friend_requests)
 
+
 @app.route('/add_friend/<int:friend_id>', methods=['POST'])
 def add_friend(friend_id):
     if 'user_id' not in session:
@@ -468,11 +521,11 @@ def add_friend(friend_id):
             cursor.execute("SELECT * FROM friends WHERE user_id = ? AND friend_id = ?", (user_id, friend_id))
             if not cursor.fetchone():
                 cursor.execute("INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, 'pending')",
-                             (user_id, friend_id))
+                               (user_id, friend_id))
                 cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
                 sender_username = cursor.fetchone()[0]
                 cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
-                             (friend_id, f"{sender_username} sent you a friend request"))
+                               (friend_id, f"{sender_username} sent you a friend request"))
                 conn.commit()
                 logger.info(f"Friend request sent to user {friend_id}")
                 socketio.emit('new_friend_request', {
@@ -489,6 +542,7 @@ def add_friend(friend_id):
             conn.close()
     return redirect(request.referrer or url_for('home'))
 
+
 @app.route('/accept_friend/<int:friend_id>', methods=['POST'])
 def accept_friend(friend_id):
     if 'user_id' not in session:
@@ -500,15 +554,15 @@ def accept_friend(friend_id):
         cursor = conn.cursor()
         try:
             cursor.execute("UPDATE friends SET status = 'accepted' WHERE user_id = ? AND friend_id = ?",
-                          (friend_id, user_id))
+                           (friend_id, user_id))
             cursor.execute("INSERT OR IGNORE INTO friends (user_id, friend_id, status) VALUES (?, ?, 'accepted')",
-                          (user_id, friend_id))
+                           (user_id, friend_id))
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             acceptor_username = cursor.fetchone()[0]
             cursor.execute("SELECT username FROM users WHERE id = ?", (friend_id,))
             friend_username = cursor.fetchone()[0]
             cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
-                          (friend_id, f"{acceptor_username} accepted your friend request"))
+                           (friend_id, f"{acceptor_username} accepted your friend request"))
             conn.commit()
             logger.info(f"Friend request from {friend_id} accepted by {user_id}")
             socketio.emit('friend_request_accepted', {
@@ -525,6 +579,7 @@ def accept_friend(friend_id):
     logger.error("CSRF validation failed for accept_friend")
     return "Bad Request: CSRF token missing", 400
 
+
 @app.route('/reject_friend/<int:friend_id>', methods=['POST'])
 def reject_friend(friend_id):
     if 'user_id' not in session:
@@ -539,7 +594,7 @@ def reject_friend(friend_id):
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             rejector_username = cursor.fetchone()[0]
             cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
-                          (friend_id, f"{rejector_username} rejected your friend request"))
+                           (friend_id, f"{rejector_username} rejected your friend request"))
             conn.commit()
             logger.info(f"Friend request from {friend_id} rejected by {user_id}")
             socketio.emit('friend_request_rejected', {'friend_id': user_id}, room=str(friend_id))
@@ -552,6 +607,7 @@ def reject_friend(friend_id):
         return redirect(url_for('home'))
     logger.error("CSRF validation failed for reject_friend")
     return "Bad Request: CSRF token missing", 400
+
 
 @app.route('/create_chat/<int:friend_id>', methods=['GET'])
 def create_chat(friend_id):
@@ -573,6 +629,7 @@ def create_chat(friend_id):
     conn.commit()
     conn.close()
     return redirect(url_for('chat', chat_id=chat_id))
+
 
 @app.route('/chat/<int:chat_id>', methods=['GET'])
 def chat(chat_id):
@@ -612,6 +669,7 @@ def chat(chat_id):
     send_notifications(user_id)
     conn.close()
     return render_template('chat.html', chat=chat, messages=messages, user_id=user_id, chat_id=chat_id)
+
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
@@ -668,6 +726,7 @@ def send_message():
     finally:
         conn.close()
 
+
 @app.route('/clear_notifications', methods=['POST'])
 def clear_notifications():
     if 'user_id' not in session:
@@ -688,6 +747,7 @@ def clear_notifications():
         return jsonify({'status': 'error', 'message': 'Database error'}), 500
     finally:
         conn.close()
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -716,10 +776,12 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html', form=form, cities=['Moscow', 'Saint Petersburg', 'Novosibirsk'])
 
+
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
     return redirect(url_for('login'))
+
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
@@ -728,7 +790,8 @@ def profile():
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT username, description, relationship_status, avatar, city FROM users WHERE id = ?", (user_id,))
+    cursor.execute("SELECT username, description, relationship_status, avatar, city FROM users WHERE id = ?",
+                   (user_id,))
     user = cursor.fetchone()
     cursor.execute("""
         SELECT posts.id, posts.content, posts.created_at, users.username, posts.image,
@@ -769,7 +832,8 @@ def profile():
         WHERE friends.user_id = ? AND friends.status = 'accepted'
     """, (user_id,))
     friends = cursor.fetchall()
-    cities = ["Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань", "Нижний Новгород", "Челябинск", "Самара", "Омск", "Ростов-на-Дону"]
+    cities = ["Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань", "Нижний Новгород", "Челябинск",
+              "Самара", "Омск", "Ростов-на-Дону"]
     if request.method == 'POST':
         csrf_token = request.form.get('csrf_token')
         if not csrf_token:
@@ -786,12 +850,13 @@ def profile():
             avatar.save(avatar_path)
             avatar_filename = filename
         cursor.execute("UPDATE users SET description = ?, relationship_status = ?, avatar = ?, city = ? WHERE id = ?",
-                      (description, relationship_status, avatar_filename, city, user_id))
+                       (description, relationship_status, avatar_filename, city, user_id))
         conn.commit()
         flash('Profile updated successfully', 'success')
         return jsonify({'status': 'success', 'avatar': f'/static/avatars/{avatar_filename}'})
     conn.close()
     return render_template('profile.html', user=user, posts=posts, friends=friends, cities=cities)
+
 
 @app.route('/like_post/<int:post_id>', methods=['POST'])
 def like_post(post_id):
@@ -806,15 +871,19 @@ def like_post(post_id):
         if existing_reaction[0] == 'like':
             cursor.execute("DELETE FROM post_reactions WHERE post_id = ? AND user_id = ?", (post_id, user_id))
         else:
-            cursor.execute("UPDATE post_reactions SET reaction = 'like' WHERE post_id = ? AND user_id = ?", (post_id, user_id))
+            cursor.execute("UPDATE post_reactions SET reaction = 'like' WHERE post_id = ? AND user_id = ?",
+                           (post_id, user_id))
     else:
-        cursor.execute("INSERT INTO post_reactions (post_id, user_id, reaction) VALUES (?, ?, 'like')", (post_id, user_id))
-        cursor.execute("SELECT user_id, username FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?", (post_id,))
+        cursor.execute("INSERT INTO post_reactions (post_id, user_id, reaction) VALUES (?, ?, 'like')",
+                       (post_id, user_id))
+        cursor.execute("SELECT user_id, username FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?",
+                       (post_id,))
         post_owner = cursor.fetchone()
         if post_owner and post_owner[0] != user_id:
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             liker_username = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)", (post_owner[0], f"{liker_username} liked your post"))
+            cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
+                           (post_owner[0], f"{liker_username} liked your post"))
             conn.commit()
             send_notifications(post_owner[0])
     conn.commit()
@@ -840,6 +909,7 @@ def like_post(post_id):
         'dislikes': dislikes,
         'user_reaction': user_reaction
     })
+
 
 @app.route('/dislike_post/<int:post_id>', methods=['POST'])
 def dislike_post(post_id):
@@ -854,15 +924,19 @@ def dislike_post(post_id):
         if existing_reaction[0] == 'dislike':
             cursor.execute("DELETE FROM post_reactions WHERE post_id = ? AND user_id = ?", (post_id, user_id))
         else:
-            cursor.execute("UPDATE post_reactions SET reaction = 'dislike' WHERE post_id = ? AND user_id = ?", (post_id, user_id))
+            cursor.execute("UPDATE post_reactions SET reaction = 'dislike' WHERE post_id = ? AND user_id = ?",
+                           (post_id, user_id))
     else:
-        cursor.execute("INSERT INTO post_reactions (post_id, user_id, reaction) VALUES (?, ?, 'dislike')", (post_id, user_id))
-        cursor.execute("SELECT user_id, username FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?", (post_id,))
+        cursor.execute("INSERT INTO post_reactions (post_id, user_id, reaction) VALUES (?, ?, 'dislike')",
+                       (post_id, user_id))
+        cursor.execute("SELECT user_id, username FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?",
+                       (post_id,))
         post_owner = cursor.fetchone()
         if post_owner and post_owner[0] != user_id:
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             disliker_username = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)", (post_owner[0], f"{disliker_username} disliked your post"))
+            cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
+                           (post_owner[0], f"{disliker_username} disliked your post"))
             conn.commit()
             send_notifications(post_owner[0])
     conn.commit()
@@ -889,6 +963,7 @@ def dislike_post(post_id):
         'user_reaction': user_reaction
     })
 
+
 @app.route('/create_post', methods=['POST'])
 def create_post():
     if 'user_id' not in session:
@@ -900,7 +975,8 @@ def create_post():
     emotion = request.form.get('emotion', None)
     image_filename = None
 
-    logger.info(f"[CreatePost] Received: content={content}, photo_path={photo_path}, emotion={emotion}, image={image.filename if image else None}")
+    logger.info(
+        f"[CreatePost] Received: content={content}, photo_path={photo_path}, emotion={emotion}, image={image.filename if image else None}")
 
     if photo_path and os.path.exists(photo_path):
         logger.info(f"[CreatePost] Processing photo_path: {photo_path}")
@@ -948,6 +1024,7 @@ def create_post():
     })
     return redirect(url_for('home'))
 
+
 @app.route('/enhance_post', methods=['POST'])
 def enhance_post():
     if 'user_id' not in session:
@@ -981,6 +1058,7 @@ def enhance_post():
     except Exception as e:
         logger.error(f"Error enhancing post: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 @app.route('/add_comment', methods=['POST'])
 def add_comment():
@@ -1016,6 +1094,7 @@ def add_comment():
         'created_at': created_at
     })
 
+
 @app.route('/get_comments/<int:post_id>', methods=['GET'])
 def get_comments(post_id):
     conn = sqlite3.connect('nana.db')
@@ -1034,12 +1113,107 @@ def get_comments(post_id):
         'comments': [{'content': c[0], 'created_at': c[1], 'username': c[2]} for c in comments]
     })
 
+
+@app.route('/create_story', methods=['POST'])
+def create_story():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user_id = session['user_id']
+    form = StoryForm()
+    if form.validate_on_submit():
+        content = request.form['content']
+        image = request.files.get('image')
+        image_filename = None
+
+        if image and allowed_file(image.filename):
+            filename = secure_filename(f"{user_id}_{int(datetime.now().timestamp())}_{image.filename}")
+            target_path = os.path.join(app.config['STORIES_FOLDER'], filename)
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            image.save(target_path)
+            image_filename = filename
+
+        expires_at = datetime.now() + timedelta(hours=24)  # Stories expire after 24 hours
+        conn = sqlite3.connect('nana.db')
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO stories (user_id, content, image, expires_at) VALUES (?, ?, ?, ?)",
+                       (user_id, content, image_filename, expires_at))
+        conn.commit()
+        cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+        username = cursor.fetchone()[0]
+        cursor.execute("SELECT id, created_at FROM stories WHERE id = LAST_INSERT_ROWID()")
+        story_id, created_at = cursor.fetchone()
+        conn.close()
+
+        socketio.emit('new_story', {
+            'story_id': story_id,
+            'user_id': user_id,
+            'username': username,
+            'content': content,
+            'image': image_filename,
+            'created_at': created_at,
+            'expires_at': expires_at
+        })
+        return redirect(url_for('home'))
+    return redirect(url_for('home'))  # Redirect with error handling if validation fails
+
+
+@app.route('/view_story/<int:story_id>', methods=['POST'])
+def view_story(story_id):
+    if 'user_id' not in session:
+        return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+    user_id = session['user_id']
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE stories SET views = views + 1 WHERE id = ?", (story_id,))
+        conn.commit()
+        cursor.execute("SELECT views FROM stories WHERE id = ?", (story_id,))
+        views = cursor.fetchone()[0]
+        return jsonify({'status': 'success', 'views': views})
+    except sqlite3.Error as e:
+        logger.error(f"Database error updating story views: {e}")
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/get_story/<int:story_id>', methods=['GET'])
+def get_story(story_id):
+    if 'user_id' not in session:
+        return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+    user_id = session['user_id']
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT content, image FROM stories 
+        WHERE id = ? AND user_id IN (
+            SELECT friend_id FROM friends 
+            WHERE user_id = ? AND status = 'accepted'
+        )
+    """, (story_id, user_id))
+    story = cursor.fetchone()
+    conn.close()
+    if story:
+        return jsonify({
+            'status': 'success',
+            'content': story[0],
+            'image': story[1]
+        })
+    return jsonify({'status': 'error', 'message': 'Story not found or not accessible'}), 404
+
+
+@app.route('/static/stories/<path:filename>')
+def serve_story_file(filename):
+    return send_from_directory(app.config['STORIES_FOLDER'], filename)
+
+
 # SocketIO event handlers
 @socketio.on('connect')
 def handle_connect():
     logger.info('Клиент подключился')
     if 'user_id' in session:
         join_room(str(session['user_id']))
+
 
 @socketio.on('join_room')
 def on_join(data):
@@ -1055,6 +1229,7 @@ def on_join(data):
             logger.warning('No room specified in join_room event')
     except Exception as e:
         logger.error(f'Error in on_join: {e}')
+
 
 @socketio.on('frame')
 def handle_frame(data):
@@ -1126,6 +1301,7 @@ def handle_frame(data):
         logger.error(f"WebSocket error: {e}")
         emit('error', {'error': str(e)}, room=str(user_id))
 
+
 import os
 from pyngrok import ngrok
 
@@ -1143,5 +1319,3 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Server startup failed: {e}")
         raise
-
-
