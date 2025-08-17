@@ -1,16 +1,13 @@
 import eventlet
-
 eventlet.monkey_patch()
 
 import os
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow warnings
 import re
-from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, Response, \
-    send_from_directory
+from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, Response, send_from_directory
 from flask_socketio import SocketIO, emit, join_room
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, FileField
+from wtforms import StringField, PasswordField, SubmitField, FileField, SelectField
 from wtforms.validators import DataRequired
 from flask_wtf.csrf import CSRFProtect
 import sqlite3
@@ -69,6 +66,8 @@ class RegisterForm(FlaskForm):
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired()])
     description = StringField('Description')
     city = StringField('City')
+    gender = SelectField('Gender', choices=[('Male', 'Male'), ('Female', 'Female')], default='Male')
+    interests = StringField('Interests')
     submit = SubmitField('Register')
 
 
@@ -132,7 +131,9 @@ def init_db():
         description TEXT,
         relationship_status TEXT DEFAULT 'не интересуюсь',
         avatar TEXT,
-        city TEXT
+        city TEXT,
+        gender TEXT,
+        interests TEXT
     )''')
     cursor.execute('''CREATE TABLE IF NOT EXISTS posts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -204,15 +205,20 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users(id)
     )''')
     # Add missing columns if they don't exist
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'gender' not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN gender TEXT")
+    if 'interests' not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN interests TEXT")
+    if 'city' not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN city TEXT")
     cursor.execute("PRAGMA table_info(friends)")
     if 'created_at' not in [col[1] for col in cursor.fetchall()]:
         cursor.execute("ALTER TABLE friends ADD COLUMN created_at TIMESTAMP")
     cursor.execute("PRAGMA table_info(chat_messages)")
     if 'is_read' not in [col[1] for col in cursor.fetchall()]:
         cursor.execute("ALTER TABLE chat_messages ADD COLUMN is_read INTEGER DEFAULT 0")
-    cursor.execute("PRAGMA table_info(users)")
-    if 'city' not in [col[1] for col in cursor.fetchall()]:
-        cursor.execute("ALTER TABLE users ADD COLUMN city TEXT")
     cursor.execute("PRAGMA table_info(posts)")
     if 'emotion' not in [col[1] for col in cursor.fetchall()]:
         cursor.execute("ALTER TABLE posts ADD COLUMN emotion TEXT")
@@ -760,6 +766,8 @@ def register():
         confirm_password = form.confirm_password.data
         description = form.description.data
         city = form.city.data
+        gender = form.gender.data
+        interests = form.interests.data
         if password != confirm_password:
             return render_template('register.html', form=form, error="Passwords do not match")
         conn = sqlite3.connect('nana.db')
@@ -769,8 +777,8 @@ def register():
             conn.close()
             return render_template('register.html', form=form, error="Username already exists")
         hashed_password = generate_password_hash(password)
-        cursor.execute("INSERT INTO users (username, password, description, city) VALUES (?, ?, ?, ?)",
-                       (username, hashed_password, description, city))
+        cursor.execute("INSERT INTO users (username, password, description, city, gender, interests) VALUES (?, ?, ?, ?, ?, ?)",
+                       (username, hashed_password, description, city, gender, interests))
         conn.commit()
         conn.close()
         return redirect(url_for('login'))
@@ -790,7 +798,7 @@ def profile():
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT username, description, relationship_status, avatar, city FROM users WHERE id = ?",
+    cursor.execute("SELECT username, description, relationship_status, avatar, city, gender, interests FROM users WHERE id = ?",
                    (user_id,))
     user = cursor.fetchone()
     cursor.execute("""
@@ -842,6 +850,8 @@ def profile():
         description = request.form.get('description')
         relationship_status = request.form.get('relationship_status')
         city = request.form.get('city')
+        gender = request.form.get('gender')
+        interests = request.form.get('interests')
         avatar = request.files.get('avatar')
         avatar_filename = user[3]
         if avatar and allowed_file(avatar.filename):
@@ -849,8 +859,8 @@ def profile():
             avatar_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             avatar.save(avatar_path)
             avatar_filename = filename
-        cursor.execute("UPDATE users SET description = ?, relationship_status = ?, avatar = ?, city = ? WHERE id = ?",
-                       (description, relationship_status, avatar_filename, city, user_id))
+        cursor.execute("UPDATE users SET description = ?, relationship_status = ?, avatar = ?, city = ?, gender = ?, interests = ? WHERE id = ?",
+                       (description, relationship_status, avatar_filename, city, gender, interests, user_id))
         conn.commit()
         flash('Profile updated successfully', 'success')
         return jsonify({'status': 'success', 'avatar': f'/static/avatars/{avatar_filename}'})
