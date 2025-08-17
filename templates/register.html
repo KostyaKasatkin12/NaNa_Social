@@ -97,6 +97,15 @@
                 {% endfor %}
             </select>
 
+            <label for="gender">Gender:</label>
+            <select id="gender" name="gender" required>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
+
+            <label for="interests">Interests (comma-separated):</label>
+            <textarea id="interests" name="interests" rows="2" placeholder="e.g., gaming, music, sports"></textarea>
+
             <button type="submit">Register</button>
         </form>
         <p><a href="{{ url_for('login') }}">Already have an account? Login</a></p>
