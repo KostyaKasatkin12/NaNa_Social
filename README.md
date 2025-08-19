@@ -1,1 +1,1 @@
-python main.py
+New Russian Social Network
