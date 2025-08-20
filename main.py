@@ -111,7 +111,7 @@ DetectorFactory.seed = 0
 morph = pymorphy.MorphAnalyzer()
 
 # Configure Gemini AI
-genai.configure(api_key="your_gemini_api_key")  # Replace with your actual API key
+genai.configure(api_key="AIzaSyBNR9ULDDEAJ2iW_0b6GgT9lfSOqs-dwMw")  # Replace with your actual API key
 gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
 
@@ -1046,14 +1046,14 @@ def enhance_post():
     try:
         lang = detect(content)
         if lang != 'ru':
-            return jsonify({
-                'status': 'success',
-                'original_content': content,
-                'enhanced_content': content
-            })
-        prompt = f"Улучшите следующий текст на русском языке, сохранив его основной смысл, но сделав стиль более живым, эмоциональным и естественным. Используйте разговорный тон, добавьте эмодзи, если уместно, и исправьте возможные орфографические или стилистические ошибки. Верните только улучшенный текст без дополнительных комментариев. Текст: {content}"
-        response = gemini_model.generate_content(prompt)
-        enhanced_content = response.text.strip()
+            enhanced_content = content + "."
+        else:
+            prompt = f"Улучшите следующий текст на русском языке, сохранив его основной смысл, но сделав стиль более живым, эмоциональным и естественным. Обязательно добавьте знаки препинания (точки, запятые, восклицательные знаки, если уместно), используйте разговорный тон и исправьте орфографические или стилистические ошибки. Верните только улучшенный текст без дополнительных комментариев. Текст: {content}"
+            response = gemini_model.generate_content(prompt)
+            enhanced_content = response.text.strip()
+        # Ensure at least a period at the end if missing
+        if not enhanced_content.endswith(('.', '!', '?')):
+            enhanced_content += '.'
         word_count = len(re.findall(r'\b\w+\b', enhanced_content))
         if word_count > 100:
             return jsonify({
@@ -1067,7 +1067,13 @@ def enhance_post():
         })
     except Exception as e:
         logger.error(f"Error enhancing post: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        # Fallback with basic punctuation
+        enhanced_content = content.strip() + '.'
+        return jsonify({
+            'status': 'success',
+            'original_content': content,
+            'enhanced_content': enhanced_content
+        })
 
 
 @app.route('/add_comment', methods=['POST'])
