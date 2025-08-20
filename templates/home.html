@@ -565,7 +565,7 @@
         }
 
         document.getElementById('aiEnhanceBtn').addEventListener('click', () => {
-            const content = document.getElementById('postContent').value;
+            const content = document.getElementById('postContent').value.trim();
             if (!content) {
                 alert('Please enter some text to enhance.');
                 return;
@@ -578,19 +578,26 @@
                 },
                 body: JSON.stringify({ content })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.status === 'success') {
-                    document.getElementById('originalPost').textContent = data.original_content;
-                    document.getElementById('enhancedPost').textContent = data.enhanced_content;
+                    const originalPost = document.getElementById('originalPost');
+                    const enhancedPost = document.getElementById('enhancedPost');
+                    originalPost.textContent = data.original_content || 'No original content';
+                    enhancedPost.textContent = data.enhanced_content || data.original_content + '.';
                     document.getElementById('postModal').classList.remove('hidden');
                 } else {
-                    alert('Error enhancing post: ' + data.message);
+                    alert('Error enhancing post: ' + (data.message || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error enhancing post:', error);
-                alert('Error enhancing post. Please try again.');
+                alert('Error enhancing post. Please try again or check the console for details.');
             });
         });
 
