@@ -445,6 +445,52 @@ def login():
     return render_template('login.html', form=form)
 
 
+@app.route('/get_more_posts', methods=['GET'])
+def get_more_posts():
+    if 'user_id' not in session:
+        return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+    user_id = session['user_id']
+    offset = request.args.get('offset', type=int, default=5)
+    limit = 5
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT posts.id, posts.content, posts.created_at, users.username, posts.image,
+               (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id AND reaction = 'like') AS likes,
+               (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id AND reaction = 'dislike') AS dislikes,
+               (SELECT reaction FROM post_reactions WHERE post_id = posts.id AND user_id = ?) AS user_reaction,
+               (SELECT json_group_array(json_array(c.content, c.created_at, u2.username))
+                FROM post_comments c
+                JOIN users u2 ON c.user_id = u2.id
+                WHERE c.post_id = posts.id
+                ORDER BY c.created_at DESC
+                LIMIT 1) AS latest_comment,
+               posts.emotion
+        FROM posts 
+        JOIN users ON posts.user_id = users.id 
+        ORDER BY posts.created_at DESC
+        LIMIT ? OFFSET ?
+    """, (user_id, limit, offset))
+    posts_raw = cursor.fetchall()
+    posts = []
+    for post in posts_raw:
+        latest_comment = json.loads(post[8])[0] if post[8] and json.loads(post[8]) else None
+        posts.append({
+            'id': post[0],
+            'content': post[1],
+            'created_at': post[2],
+            'username': post[3],
+            'image': post[4],
+            'likes': post[5],
+            'dislikes': post[6],
+            'user_reaction': post[7],
+            'latest_comment': latest_comment,
+            'emotion': post[9]
+        })
+    conn.close()
+    return jsonify({'status': 'success', 'posts': posts})
+
+
 @app.route('/face_detector')
 def face_detector():
     if 'user_id' not in session:
