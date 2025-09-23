@@ -18,18 +18,40 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6">
         <header class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg mb-8 text-center">
             <h1 class="text-3xl sm:text-4xl font-bold leading-relaxed">
-                Детектор эмоций и жестов
+                Детектор эмоций, жестов и речи
             </h1>
             <p class="mt-2 text-lg">Покажите жест "FIST" (кулак) и подождите 5 секунд, чтобы сделать фото.</p>
             <p class="mt-1 text-lg">Покажите знак Фиксиков (VICTORY), чтобы открыть профиль.</p>
             <p class="mt-1 text-lg">Покажите жест "ROCK", чтобы открыть список друзей.</p>
+            <p class="mt-1 text-lg">Нажмите "Включить распознавание речи" и говорите - текст появится ниже.</p>
         </header>
         <main class="flex flex-col gap-6">
             <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg transition text-center">
                 <video id="video" class="w-full max-w-2xl mx-auto rounded-lg border-2 border-gray-300 dark:border-gray-600" width="640" height="480" autoplay playsinline></video>
-                <div class="mt-4 text-lg">
+                <div class="mt-4 text-lg space-y-2">
                     <p><strong>Эмоция:</strong> <span id="emotion" class="text-blue-500 dark:text-blue-400">Ожидание...</span></p>
                     <p><strong>Жест:</strong> <span id="gesture" class="text-blue-500 dark:text-blue-400">Ожидание...</span></p>
+                    <!-- Добавленный блок для распознанной речи -->
+                    <div class="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <p><strong>Распознанная речь:</strong></p>
+                        <div id="speech-result" class="min-h-20 p-3 mt-2 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-left">
+                            <span class="text-gray-500 dark:text-gray-400">Текст появится здесь когда вы начнёте говорить...</span>
+                        </div>
+                        <div class="mt-3 flex justify-center gap-4">
+                            <button id="start-recognition" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                                <i class="fas fa-microphone mr-2"></i>Включить распознавание речи
+                            </button>
+                            <button id="stop-recognition" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition" disabled>
+                                <i class="fas fa-microphone-slash mr-2"></i>Выключить
+                            </button>
+                            <button id="clear-speech" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                                <i class="fas fa-eraser mr-2"></i>Очистить
+                            </button>
+                        </div>
+                        <div id="recognition-status" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                            Статус: Ожидание запуска
+                        </div>
+                    </div>
                 </div>
                 <a href="{{ url_for('home') }}" id="back-home" class="mt-4 inline-block px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition">Вернуться на главную</a>
             </div>
@@ -49,12 +71,119 @@
         const video = document.getElementById('video');
         const emotionText = document.getElementById('emotion');
         const gestureText = document.getElementById('gesture');
+        const speechResult = document.getElementById('speech-result');
+        const startBtn = document.getElementById('start-recognition');
+        const stopBtn = document.getElementById('stop-recognition');
+        const clearBtn = document.getElementById('clear-speech');
+        const statusText = document.getElementById('recognition-status');
         const spidermanDialog = document.getElementById('spidermanDialog');
         const spidermanMessage = document.getElementById('spidermanMessage');
         const spidermanYes = document.getElementById('spidermanYes');
         const spidermanNo = document.getElementById('spidermanNo');
+
         let stream = null;
         let frameInterval = null;
+        let recognition = null;
+        let isRecognizing = false;
+        let finalTranscript = '';
+
+        // Проверка поддержки Web Speech API
+        function checkSpeechRecognitionSupport() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                statusText.textContent = 'Статус: Ваш браузер не поддерживает распознавание речи';
+                startBtn.disabled = true;
+                startBtn.textContent = 'Браузер не поддерживается';
+                return false;
+            }
+            return true;
+        }
+
+        // Инициализация распознавания речи
+        function initializeSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'ru-RU'; // Русский язык
+
+            recognition.onstart = function() {
+                isRecognizing = true;
+                statusText.textContent = 'Статус: Слушаю... Говорите';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                speechResult.innerHTML = '<span class="text-green-500">Слушаю... Начинайте говорить</span>';
+            };
+
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                // Обновляем отображение текста
+                let displayText = finalTranscript;
+                if (interimTranscript) {
+                    displayText += '<span class="text-gray-500">' + interimTranscript + '</span>';
+                }
+
+                speechResult.innerHTML = displayText || '<span class="text-gray-500">Речь не распознана</span>';
+
+                // Прокрутка к новому тексту
+                speechResult.scrollTop = speechResult.scrollHeight;
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+                statusText.textContent = 'Статус: Ошибка - ' + event.error;
+                if (event.error === 'not-allowed') {
+                    speechResult.innerHTML = '<span class="text-red-500">Разрешите доступ к микрофону</span>';
+                }
+                stopRecognition();
+            };
+
+            recognition.onend = function() {
+                if (isRecognizing) {
+                    // Перезапускаем, если все еще в режиме распознавания
+                    recognition.start();
+                }
+            };
+        }
+
+        function startRecognition() {
+            if (!recognition) {
+                initializeSpeechRecognition();
+            }
+
+            try {
+                recognition.start();
+                finalTranscript = '';
+            } catch (error) {
+                console.error('Error starting recognition:', error);
+                statusText.textContent = 'Статус: Ошибка запуска';
+            }
+        }
+
+        function stopRecognition() {
+            if (recognition) {
+                isRecognizing = false;
+                recognition.stop();
+                statusText.textContent = 'Статус: Остановлено';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+
+        function clearSpeechText() {
+            finalTranscript = '';
+            speechResult.innerHTML = '<span class="text-gray-500 dark:text-gray-400">Текст очищен</span>';
+        }
 
         function logWithTimestamp(message) {
             console.log(`[${new Date().toISOString()}] ${message}`);
@@ -102,7 +231,21 @@
                 frameInterval = null;
                 logWithTimestamp('Frame capture stopped');
             }
+            stopRecognition();
         }
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // Проверяем поддержку распознавания речи
+            if (checkSpeechRecognitionSupport()) {
+                initializeSpeechRecognition();
+            }
+
+            // Назначаем обработчики кнопок
+            startBtn.addEventListener('click', startRecognition);
+            stopBtn.addEventListener('click', stopRecognition);
+            clearBtn.addEventListener('click', clearSpeechText);
+        });
 
         socket.on('connect', () => {
             logWithTimestamp('SocketIO connection established');
@@ -131,12 +274,16 @@
             gestureText.textContent = data.gesture || 'Не распознано';
             if (data.gesture === 'FIST' && data.photo) {
                 logWithTimestamp(`FIST gesture detected with photo: ${data.photo}`);
-                const postText = prompt('Введите текст для поста:');
+                // Используем распознанный текст как предложение для поста
+                let postText = finalTranscript.trim();
+                if (!postText) {
+                    postText = prompt('Введите текст для поста (или используйте распознанную речь):');
+                }
                 if (postText !== null) {
                     stopCamera();
                     const homeUrl = '{{ url_for("home") }}';
                     const params = new URLSearchParams({
-                        photo_path: data.photo, // Send full path
+                        photo_path: data.photo,
                         emotion: data.emotion ? data.emotion.name : '',
                         content: postText
                     });
@@ -177,6 +324,103 @@
         });
 
         window.addEventListener('beforeunload', stopCamera);
+        function sendAudioToServer(audioBlob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const audioData = reader.result;
+                    socket.emit('audio_data', { audio: audioData }, (response) => {
+                        if (response && response.success) {
+                            resolve(response.text);
+                        } else {
+                            reject(response ? response.error : 'Unknown error');
+                        }
+                    });
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(audioBlob);
+            });
+        }
+
+        // Обновите функцию startRecognition для отправки данных на сервер
+        function startRecognition() {
+            if (!recognition) {
+                initializeSpeechRecognition();
+            }
+
+            // Создаем MediaRecorder для записи аудио
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function(stream) {
+                    const mediaRecorder = new MediaRecorder(stream);
+                    const audioChunks = [];
+
+                    mediaRecorder.ondataavailable = function(event) {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = function() {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        // Отправляем на сервер
+                        sendAudioToServer(audioBlob)
+                            .then(serverText => {
+                                console.log('Server recognition:', serverText);
+                                // Можно сравнить с клиентским распознаванием
+                            })
+                            .catch(error => {
+                                console.error('Server recognition error:', error);
+                            });
+                    };
+
+                    mediaRecorder.start();
+
+                    // Останавливаем запись когда останавливаем распознавание
+                    window.currentMediaRecorder = mediaRecorder;
+                })
+                .catch(function(err) {
+                    console.error('Error accessing microphone:', err);
+                });
+
+            try {
+                recognition.start();
+                finalTranscript = '';
+            } catch (error) {
+                console.error('Error starting recognition:', error);
+                statusText.textContent = 'Статус: Ошибка запуска';
+            }
+        }
+
+        function stopRecognition() {
+            if (recognition) {
+                isRecognizing = false;
+                recognition.stop();
+
+                // Останавливаем запись аудио
+                if (window.currentMediaRecorder && window.currentMediaRecorder.state !== 'inactive') {
+                    window.currentMediaRecorder.stop();
+                }
+
+                statusText.textContent = 'Статус: Остановлено';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+
+        // Добавьте обработчик для ответов от сервера
+        socket.on('speech_result', function(data) {
+            if (data.error) {
+                console.error('Server speech recognition error:', data.error);
+                return;
+            }
+
+            if (data.success) {
+                // Добавляем серверный результат с пометкой
+                const serverText = `[Сервер] ${data.text}`;
+                speechResult.innerHTML += `<div class="mt-2 p-2 bg-blue-50 dark:bg-blue-900 rounded">${serverText}</div>`;
+                speechResult.scrollTop = speechResult.scrollHeight;
+            }
+        });
     </script>
 </body>
 </html>
+
+
