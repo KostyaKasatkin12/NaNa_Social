@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История распознанной речи - NaNa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen font-poppins">
+    <div class="max-w-4xl mx-auto p-6">
+        <header class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg mb-8">
+            <h1 class="text-3xl font-bold">История распознанной речи</h1>
+            <p class="mt-2">Все ваши распознанные фразы</p>
+        </header>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+            {% if speech_history %}
+            <div class="space-y-4">
+                {% for text, created_at in speech_history %}
+                <div class="border-l-4 border-blue-500 pl-4 py-2 bg-gray-50 dark:bg-gray-700 rounded">
+                    <p class="text-gray-800 dark:text-gray-200">{{ text }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        {{ created_at }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8">
+                <p class="text-gray-500 dark:text-gray-400">История распознанной речи пуста</p>
+                <p class="text-sm mt-2">Начните использовать распознавание речи на странице детектора эмоций</p>
+            </div>
+            {% endif %}
+
+            <div class="mt-6 flex gap-4">
+                <a href="{{ url_for('face_detector') }}"
+                   class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                   Вернуться к детектору
+                </a>
+                <a href="{{ url_for('home') }}"
+                   class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition">
+                   На главную
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
