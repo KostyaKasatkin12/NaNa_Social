@@ -25,23 +25,30 @@ from langdetect import detect, DetectorFactory
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
+import speech_recognition as sr
+from io import BytesIO
+import wave
 
 # Initialize Flask and SocketIO
 app = Flask(__name__)
 app.secret_key = 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5'  # Replace with a secure key
 app.config['UPLOAD_FOLDER'] = 'static/avatars'
 app.config['STORIES_FOLDER'] = 'static/stories'
-socketio = SocketIO(app, cors_allowed_origins="*")
+app.config['AUDIO_FOLDER'] = 'static/audio'
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 csrf = CSRFProtect(app)
 
 # Configure directories
 UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
 STORIES_FOLDER = app.config['STORIES_FOLDER']
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi'}  # Include video extensions
+AUDIO_FOLDER = app.config['AUDIO_FOLDER']
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi', 'wav'}
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 if not os.path.exists(STORIES_FOLDER):
     os.makedirs(STORIES_FOLDER)
+if not os.path.exists(AUDIO_FOLDER):
+    os.makedirs(AUDIO_FOLDER)
 
 # Initialize emotion and hand detection
 emotion_detector = FER(mtcnn=True)
@@ -53,29 +60,8 @@ hands = mp_hands.Hands(
     min_tracking_confidence=0.8
 )
 
-
-class LoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
-    password = PasswordField('Password', validators=[DataRequired()])
-    submit = SubmitField('Login')
-
-
-class RegisterForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
-    password = PasswordField('Password', validators=[DataRequired()])
-    confirm_password = PasswordField('Confirm Password', validators=[DataRequired()])
-    description = StringField('Description')
-    city = StringField('City')
-    gender = SelectField('Gender', choices=[('Male', 'Male'), ('Female', 'Female')], default='Male')
-    interests = StringField('Interests')
-    submit = SubmitField('Register')
-
-
-class StoryForm(FlaskForm):
-    content = StringField('Content', validators=[DataRequired()])
-    image = FileField('Image', validators=[DataRequired()])
-    submit = SubmitField('Add Story')
-
+# Initialize speech recognition
+recognizer = sr.Recognizer()
 
 # Define gestures based on finger states (0 = down, 1 = up)
 GESTURES = {
@@ -111,11 +97,30 @@ DetectorFactory.seed = 0
 morph = pymorphy.MorphAnalyzer()
 
 # Configure Gemini AI
-genai.configure(api_key="AIzaSyBNR9ULDDEAJ2iW_0b6GgT9lfSOqs-dwMw")  # Replace with your actual API key
+genai.configure(api_key="AIzaSyBNR9ULDDEAJ2iW_0b6GgT9lfSOqs-dwMw")
 gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
+# Forms
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
 
-# Form for adding friends
+class RegisterForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    confirm_password = PasswordField('Confirm Password', validators=[DataRequired()])
+    description = StringField('Description')
+    city = StringField('City')
+    gender = SelectField('Gender', choices=[('Male', 'Male'), ('Female', 'Female')], default='Male')
+    interests = StringField('Interests')
+    submit = SubmitField('Register')
+
+class StoryForm(FlaskForm):
+    content = StringField('Content', validators=[DataRequired()])
+    image = FileField('Image', validators=[DataRequired()])
+    submit = SubmitField('Add Story')
+
 class AddFriendForm(FlaskForm):
     submit = SubmitField('Добавить в друзья')
 
@@ -124,107 +129,142 @@ class AddFriendForm(FlaskForm):
 def init_db():
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL,
-        password TEXT NOT NULL,
-        description TEXT,
-        relationship_status TEXT DEFAULT 'не интересуюсь',
-        avatar TEXT,
-        city TEXT,
-        gender TEXT,
-        interests TEXT
-    )''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        image TEXT,
-        emotion TEXT,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS friends (
-        user_id INTEGER NOT NULL,
-        friend_id INTEGER NOT NULL,
-        status TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (user_id, friend_id),
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (friend_id) REFERENCES users(id)
-    )''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS chats (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user1_id INTEGER NOT NULL,
-        user2_id INTEGER NOT NULL,
-        FOREIGN KEY (user1_id) REFERENCES users(id),
-        FOREIGN KEY (user2_id) REFERENCES users(id)
-    )''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS chat_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chat_id INTEGER NOT NULL,
-        sender_id INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        is_read INTEGER DEFAULT 0,
-        FOREIGN KEY (chat_id) REFERENCES chats(id),
-        FOREIGN KEY (sender_id) REFERENCES users(id)
-    )''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS post_reactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        post_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        reaction TEXT NOT NULL,
-        UNIQUE(post_id, user_id),
-        FOREIGN KEY (post_id) REFERENCES posts(id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS post_comments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        post_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (post_id) REFERENCES posts(id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS stories (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        content TEXT,
-        image TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        expires_at TIMESTAMP,
-        views INTEGER DEFAULT 0,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )''')
-    # Add missing columns if they don't exist
-    cursor.execute("PRAGMA table_info(users)")
-    columns = [col[1] for col in cursor.fetchall()]
-    if 'gender' not in columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN gender TEXT")
-    if 'interests' not in columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN interests TEXT")
-    if 'city' not in columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN city TEXT")
-    cursor.execute("PRAGMA table_info(friends)")
-    if 'created_at' not in [col[1] for col in cursor.fetchall()]:
-        cursor.execute("ALTER TABLE friends ADD COLUMN created_at TIMESTAMP")
-    cursor.execute("PRAGMA table_info(chat_messages)")
-    if 'is_read' not in [col[1] for col in cursor.fetchall()]:
-        cursor.execute("ALTER TABLE chat_messages ADD COLUMN is_read INTEGER DEFAULT 0")
-    cursor.execute("PRAGMA table_info(posts)")
-    if 'emotion' not in [col[1] for col in cursor.fetchall()]:
-        cursor.execute("ALTER TABLE posts ADD COLUMN emotion TEXT")
+
+    # Create tables
+    tables = [
+        '''CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL,
+            description TEXT,
+            relationship_status TEXT DEFAULT 'не интересуюсь',
+            avatar TEXT,
+            city TEXT,
+            gender TEXT,
+            interests TEXT
+        )''',
+        '''CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            image TEXT,
+            emotion TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )''',
+        '''CREATE TABLE IF NOT EXISTS friends (
+            user_id INTEGER NOT NULL,
+            friend_id INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, friend_id),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (friend_id) REFERENCES users(id)
+        )''',
+        '''CREATE TABLE IF NOT EXISTS chats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user1_id INTEGER NOT NULL,
+            user2_id INTEGER NOT NULL,
+            FOREIGN KEY (user1_id) REFERENCES users(id),
+            FOREIGN KEY (user2_id) REFERENCES users(id)
+        )''',
+        '''CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL,
+            sender_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            is_read INTEGER DEFAULT 0,
+            FOREIGN KEY (chat_id) REFERENCES chats(id),
+            FOREIGN KEY (sender_id) REFERENCES users(id)
+        )''',
+        '''CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )''',
+        '''CREATE TABLE IF NOT EXISTS post_reactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            reaction TEXT NOT NULL,
+            UNIQUE(post_id, user_id),
+            FOREIGN KEY (post_id) REFERENCES posts(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )''',
+        '''CREATE TABLE IF NOT EXISTS post_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (post_id) REFERENCES posts(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )''',
+        '''CREATE TABLE IF NOT EXISTS stories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            content TEXT,
+            image TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP,
+            views INTEGER DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )''',
+        '''CREATE TABLE IF NOT EXISTS speech_recognition (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            recognized_text TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )'''
+    ]
+
+    for table in tables:
+        cursor.execute(table)
+
     conn.commit()
     conn.close()
 
+
+def process_audio(audio_data, sample_rate=16000):
+    """
+    Обработка аудио данных и распознавание речи
+    """
+    try:
+        # Создаем временный WAV файл в памяти
+        audio_buffer = BytesIO()
+
+        # Создаем WAV файл
+        with wave.open(audio_buffer, 'wb') as wav_file:
+            wav_file.setnchannels(1)  # моно
+            wav_file.setsampwidth(2)  # 16-bit
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(audio_data)
+
+        # Перемещаем указатель в начало буфера
+        audio_buffer.seek(0)
+
+        # Используем speech_recognition для распознавания
+        with sr.AudioFile(audio_buffer) as source:
+            # Adjust for ambient noise and record
+            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            audio = recognizer.record(source)
+
+            # Пытаемся распознать речь на русском языке
+            text = recognizer.recognize_google(audio, language='ru-RU')
+            return text, True
+
+    except sr.UnknownValueError:
+        logger.warning("Speech recognition could not understand audio")
+        return "Речь не распознана", False
+    except sr.RequestError as e:
+        logger.error(f"Could not request results from Google Speech Recognition service: {e}")
+        return f"Ошибка сервиса распознавания: {e}", False
+    except Exception as e:
+        logger.error(f"Error processing audio: {e}")
+        return f"Ошибка обработки аудио: {e}", False
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -324,12 +364,37 @@ def send_notifications(user_id):
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/x-icon')
 
+@app.route('/speech_history')
+def speech_history():
+    """
+    Страница с историей распознанной речи
+    """
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT recognized_text, created_at 
+        FROM speech_recognition 
+        WHERE user_id = ? 
+        ORDER BY created_at DESC 
+        LIMIT 50
+    ''', (user_id,))
+
+    speech_history = cursor.fetchall()
+    conn.close()
+
+    return render_template('speech_history.html', speech_history=speech_history)
 
 @app.route('/', methods=['GET'])
 def home():
     if 'user_id' not in session:
         logger.warning("No user_id in session, redirecting to login")
         return redirect(url_for('login'))
+
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
@@ -417,9 +482,9 @@ def home():
     send_notifications(user_id)
     search_form = AddFriendForm()
     form = AddFriendForm()
-    return render_template('home.html', username=user[0], posts=posts, friends=friends,
-                           friend_requests=friend_requests, notifications=notifications, chats=chats,
-                           search_form=search_form, form=form, stories=stories)
+    return render_template('home.html', username=user[0], posts=[], friends=[],
+                           friend_requests=[], notifications=[], chats=[],
+                           search_form=search_form, form=form, stories=[])
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -1024,21 +1089,26 @@ def dislike_post(post_id):
 def create_post():
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
     user_id = session['user_id']
     content = request.form['content']
     image = request.files.get('image')
     photo_path = request.form.get('photo_path')
     emotion = request.form.get('emotion', None)
+    speech_text = request.form.get('speech_text', '')  # Новый параметр для речи
+
+    # Если есть распознанная речь, используем её как содержание поста
+    if speech_text and speech_text.strip() and (not content or content.strip() == ''):
+        content = speech_text.strip()
+
     image_filename = None
 
     logger.info(
-        f"[CreatePost] Received: content={content}, photo_path={photo_path}, emotion={emotion}, image={image.filename if image else None}")
+        f"[CreatePost] Received: content={content}, speech_text={speech_text}, photo_path={photo_path}, emotion={emotion}, image={image.filename if image else None}")
 
     if photo_path and os.path.exists(photo_path):
         logger.info(f"[CreatePost] Processing photo_path: {photo_path}")
-        # Ensure target directory exists
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        # Extract filename from absolute path
         filename = os.path.basename(photo_path)
         target_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         try:
@@ -1076,10 +1146,10 @@ def create_post():
         'likes': 0,
         'dislikes': 0,
         'user_reaction': None,
-        'emotion': emotion
+        'emotion': emotion,
+        'has_speech': bool(speech_text and speech_text.strip())  # Показываем, что пост создан с речью
     })
     return redirect(url_for('home'))
-
 
 @app.route('/enhance_post', methods=['POST'])
 def enhance_post():
@@ -1277,6 +1347,60 @@ def handle_connect():
         join_room(str(session['user_id']))
 
 
+@socketio.on('audio_data')
+def handle_audio_data(data):
+    """
+    Обработка аудио данных от клиента
+    """
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            emit('speech_result', {'error': 'Not logged in'})
+            return
+
+        # Декодируем base64 аудио данные
+        if 'audio' in data:
+            audio_base64 = data['audio'].split(',')[1]  # Убираем префикс data:audio/wav;base64,
+            audio_data = base64.b64decode(audio_base64)
+
+            # Обрабатываем аудио
+            recognized_text, success = process_audio(audio_data)
+
+            # Сохраняем в базу данных
+            if success and recognized_text and recognized_text != "Речь не распознана":
+                conn = sqlite3.connect('nana.db')
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO speech_recognition (user_id, recognized_text) VALUES (?, ?)",
+                               (user_id, recognized_text))
+                conn.commit()
+                conn.close()
+
+            # Отправляем результат обратно клиенту
+            emit('speech_result', {
+                'text': recognized_text,
+                'success': success,
+                'timestamp': datetime.now().isoformat()
+            }, room=str(user_id))
+
+        else:
+            emit('speech_result', {'error': 'No audio data received'})
+
+    except Exception as e:
+        logger.error(f"Error handling audio data: {e}")
+        emit('speech_result', {'error': str(e)})
+
+
+@socketio.on('join_speech_room')
+def handle_join_speech_room(data):
+    """
+    Присоединение к комнате для обновлений речи
+    """
+    user_id = session.get('user_id')
+    if user_id:
+        room_name = f'speech_room_{user_id}'
+        join_room(room_name)
+        emit('speech_room_joined', {'room': room_name})
+
 @socketio.on('join_room')
 def on_join(data):
     try:
@@ -1371,11 +1495,12 @@ if __name__ == '__main__':
     try:
         # Если запускаемся в Colab — пробрасываем ngrok вручную
         if 'COLAB_GPU' in os.environ or 'COLAB_TPU_ADDR' in os.environ:
+            from pyngrok import ngrok
             public_url = ngrok.connect(5000)
             print(f"✅ Открой сайт по ссылке: {public_url}")
 
         init_db()
-        logger.info("Starting Flask-SocketIO server...")
+        logger.info("Starting Flask-SocketIO server with speech recognition...")
         socketio.run(app, debug=True, host='0.0.0.0', port=5000, use_reloader=False)
 
     except Exception as e:
