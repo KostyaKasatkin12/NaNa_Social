@@ -482,9 +482,16 @@ def home():
     send_notifications(user_id)
     search_form = AddFriendForm()
     form = AddFriendForm()
-    return render_template('home.html', username=user[0], posts=[], friends=[],
-                           friend_requests=[], notifications=[], chats=[],
-                           search_form=search_form, form=form, stories=[])
+    return render_template('home.html',
+                           username=user[0],
+                           posts=posts,  # Используйте загруженные посты
+                           friends=friends,
+                           friend_requests=friend_requests,
+                           notifications=notifications,
+                           chats=chats,
+                           search_form=search_form,
+                           form=form,
+                           stories=stories)
 
 
 @app.route('/login', methods=['GET', 'POST'])
