@@ -14,177 +14,490 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --secondary: #8b5cf6;
+            --accent: #10b981;
+        }
+
+        .story-gradient {
+            background: linear-gradient(45deg, #8b5cf6, #3b82f6, #06b6d4);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--accent), #0ea5e9);
+            color: white;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .input-modern {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            background: white;
+            color: #1f2937; /* Черный текст */
+        }
+
+        .dark .input-modern {
+            border-color: #4b5563;
+            background: #374151;
+            color: #f9fafb; /* Белый текст в темной теме */
+        }
+
+        .input-modern:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .post-card {
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .post-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .dark .post-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .notification-dot {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .stories-container::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .stories-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .stories-container::-webkit-scrollbar-thumb {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+        }
+
+        .dark .stories-container::-webkit-scrollbar-track {
+            background: #374151;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+        }
+
+        .story-circle {
+            position: relative;
+            background: linear-gradient(45deg, #f59e0b, #ec4899, #8b5cf6);
+            padding: 3px;
+            border-radius: 50%;
+        }
+
+        .story-inner {
+            background: white;
+            border-radius: 50%;
+            padding: 2px;
+        }
+
+        .dark .story-inner {
+            background: #1f2937;
+        }
+
+        /* Фикс для текста в формах */
+        textarea, input[type="text"] {
+            color: #1f2937 !important;
+        }
+
+        .dark textarea, .dark input[type="text"] {
+            color: #f9fafb !important;
+        }
+
+        /* Улучшенный вид для кнопок историй */
+        .story-view-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-weight: 500;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            margin-top: 8px;
+            font-size: 0.875rem;
+        }
+
+        .story-view-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+    </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 min-h-screen font-poppins w-full h-full text-gray-800 dark:text-gray-200 transition-colors duration-300">
-    <div class="max-w-4xl mx-auto p-4 sm:p-6">
-        <header class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg mb-8 text-center">
-            <h1 class="text-3xl sm:text-4xl font-bold leading-relaxed">
-                Welcome, {{ username }}. Now you are part of - NaNa
-            </h1>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen font-poppins text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 rounded-2xl shadow-xl mb-8 text-center relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20"></div>
+            <div class="relative z-10">
+                <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-4">
+                    Welcome, <span class="text-yellow-300">{{ username }}</span>
+                </h1>
+                <p class="text-xl opacity-90">Now you are part of <span class="font-bold text-blue-200">NaNa</span></p>
+                <div class="mt-4 flex items-center justify-center gap-3">
+                    <i class="fas fa-heart text-red-400"></i>
+                    <span class="text-blue-100">Connect, Share, Discover</span>
+                    <i class="fas fa-heart text-red-400"></i>
+                </div>
+            </div>
         </header>
 
         <!-- Stories Section -->
-        <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md mb-8">
-            <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                <i class="fas fa-camera text-blue-500 dark:text-blue-300"></i> Your Stories
-            </h2>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg mb-8 post-card">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    Your Stories
+                </h2>
+                <span class="text-sm font-medium px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
+                    {{ stories|length }} stories
+                </span>
+            </div>
+
             <div class="mb-6">
-                <form id="createStoryForm" method="POST" action="{{ url_for('create_story') }}" enctype="multipart/form-data" class="flex flex-col gap-4">
+                <form id="createStoryForm" method="POST" action="{{ url_for('create_story') }}" enctype="multipart/form-data" class="space-y-4">
                     {{ search_form.hidden_tag() }}
-                    <textarea name="content" placeholder="Share a story..." class="w-full p-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700 text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 min-h-20 resize-y"></textarea>
-                    <label class="text-base font-medium text-gray-700 dark:text-gray-300">
-                        Attach Image/Video:
-                        <input type="file" name="image" accept="image/*,video/*" class="block w-full mt-2 text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900 file:text-blue-500 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-800"/>
-                    </label>
-                    <button type="submit" class="px-6 py-3 bg-blue-500 dark:bg-blue-600 text-white rounded-xl hover:bg-blue-600 dark:hover:bg-blue-700 transform hover:scale-105 transition duration-300">Add Story</button>
+                    <div>
+                        <textarea name="content" placeholder="What's happening? Share your story..."
+                                class="input-modern w-full p-4 min-h-[100px] resize-none"></textarea>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center">
+                                <i class="fas fa-image text-blue-600 dark:text-blue-400 text-lg"></i>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-700 dark:text-gray-300 block">Add Media</span>
+                                <input type="file" name="image" accept="image/*,video/*"
+                                       class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-100 dark:file:bg-blue-900 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-200 dark:hover:file:bg-blue-800">
+                            </div>
+                        </label>
+
+                        <button type="submit" class="btn-primary px-6 py-3 rounded-xl font-semibold flex items-center gap-2">
+                            <i class="fas fa-plus"></i>
+                            Add Story
+                        </button>
+                    </div>
                 </form>
             </div>
-            <div class="stories-container flex overflow-x-auto gap-4">
+
+            <div class="stories-container flex overflow-x-auto gap-6 pb-4 px-2">
                 {% for story in stories %}
-                    <div class="story bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md min-w-[150px] flex flex-col items-center">
-                        {% if story.image %}
-                            {% set ext = story.image|split('.')|last|lower %}
-                            {% if ext in ['mp4', 'mov', 'avi'] %}
-                                <video src="{{ url_for('serve_story_file', filename=story.image) }}" class="w-20 h-20 rounded-full object-cover mb-2" controls></video>
-                            {% else %}
-                                <img src="{{ url_for('serve_story_file', filename=story.image) }}" alt="Story" class="w-20 h-20 rounded-full object-cover mb-2">
-                            {% endif %}
-                        {% else %}
-                            <div class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-2">
-                                <span class="text-gray-500 dark:text-gray-400">No Media</span>
+                    <div class="flex flex-col items-center flex-shrink-0">
+                        <div class="story-circle mb-3">
+                            <div class="story-inner">
+                                {% if story.image %}
+                                    {% set ext = story.image|split('.')|last|lower %}
+                                    {% if ext in ['mp4', 'mov', 'avi'] %}
+                                        <video src="{{ url_for('serve_story_file', filename=story.image) }}"
+                                               class="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800"></video>
+                                    {% else %}
+                                        <img src="{{ url_for('serve_story_file', filename=story.image) }}"
+                                             alt="Story" class="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800">
+                                    {% endif %}
+                                {% else %}
+                                    <div class="w-20 h-20 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 border-4 border-white dark:border-gray-800 flex items-center justify-center">
+                                        <i class="fas fa-feather text-gray-400 dark:text-gray-500 text-xl"></i>
+                                    </div>
+                                {% endif %}
                             </div>
-                        {% endif %}
-                        <p class="text-sm text-gray-700 dark:text-gray-300 text-center">{{ story[2]|truncate(20) }}</p>
-                        <button onclick="viewStory({{ story[0] }})" class="mt-2 px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">View</button>
+                        </div>
+                        <p class="text-sm text-center font-medium text-gray-700 dark:text-gray-300 truncate max-w-[100px] mb-2">
+                            {{ story[2]|truncate(15) }}
+                        </p>
+                        <button onclick="viewStory({{ story[0] }})" class="story-view-btn">
+                            <i class="fas fa-eye mr-1"></i> View
+                        </button>
                     </div>
                 {% endfor %}
-            </div>
-        </div>
-
-        <!-- Modal for Story Viewing -->
-        <div id="storyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-2xl">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Story</h2>
-                <div class="mb-6">
-                    <div id="storyMedia" class="w-full h-96 mb-4 flex items-center justify-center">
-                        <!-- Media will be inserted here -->
+                {% if not stories %}
+                    <div class="flex items-center justify-center w-full py-10 text-gray-400 dark:text-gray-500">
+                        <div class="text-center">
+                            <div class="w-20 h-20 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 mx-auto mb-4 flex items-center justify-center">
+                                <i class="fas fa-images text-2xl"></i>
+                            </div>
+                            <p class="font-medium">No stories yet</p>
+                            <p class="text-sm mt-1">Share your first story!</p>
+                        </div>
                     </div>
-                    <p id="storyCaption" class="text-gray-700 dark:text-gray-300 text-center"></p>
-                </div>
-                <button onclick="closeModal()" class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transform hover:scale-105 transition duration-300 w-full">Close</button>
+                {% endif %}
             </div>
         </div>
 
-        <main class="flex flex-col md:flex-row gap-8 min-h-[calc(100vh-300px)]">
-            <!-- Left Sidebar (Friends and Friend Requests) -->
-            <div class="w-full md:w-2/5 flex flex-col gap-0 md:gap-6 md:flex-1 md:sticky md:top-6 h-[50vh]">
-                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg transition h-full overflow-y-hidden">
-                    <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                        <i class="fas fa-users text-blue-500 dark:text-blue-400"></i> Your Friends
-                    </h2>
-                    {% if friends %}
-                        <ul class="space-y-3 friend-list">
+        <!-- Main Content Grid -->
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left Sidebar - Friends & Friend Requests -->
+            <div class="lg:col-span-3 space-y-6">
+                <!-- Friends Card -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-lg post-card">
+                    <div class="flex items-center justify-between mb-5">
+                        <h3 class="text-xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            Friends
+                        </h3>
+                        <span class="text-sm font-medium px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
+                            {{ friends|length }}
+                        </span>
+                    </div>
+
+                    <div class="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                        {% if friends %}
                             {% for friend in friends %}
-                                <li class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                                        <i class="fas fa-user text-blue-500 dark:text-blue-400"></i>
+                                <a href="{{ url_for('create_chat', friend_id=friend[1]) }}"
+                                   class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition group">
+                                    <div class="relative">
+                                        <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center justify-center text-white font-semibold text-lg">
+                                            {{ friend[0][0]|upper }}
+                                        </div>
+                                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
                                     </div>
-                                    <a href="{{ url_for('create_chat', friend_id=friend[1]) }}" class="text-blue-500 dark:text-blue-400 hover:underline font-medium">{{ friend[0] }}</a>
-                                </li>
+                                    <div class="flex-1">
+                                        <h4 class="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                                            {{ friend[0] }}
+                                        </h4>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">Click to chat</p>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-gray-400 group-hover:text-blue-500 transition"></i>
+                                </a>
                             {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p class="text-gray-500 dark:text-gray-400 italic">No friends yet.</p>
-                    {% endif %}
+                        {% else %}
+                            <div class="text-center py-8">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 mx-auto mb-3 flex items-center justify-center">
+                                    <i class="fas fa-user-friends text-gray-400 text-xl"></i>
+                                </div>
+                                <p class="text-gray-500 dark:text-gray-400">No friends yet</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Search for friends below!</p>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg transition h-full overflow-y-hidden">
-                    <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                        <i class="fas fa-user-plus text-blue-500 dark:text-blue-400"></i> Friend Requests
-                    </h2>
-                    <ul class="space-y-3 friend-requests">
+
+                <!-- Friend Requests Card -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-lg post-card">
+                    <div class="flex items-center justify-between mb-5">
+                        <h3 class="text-xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                            <div class="relative">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-white">
+                                    <i class="fas fa-user-plus"></i>
+                                </div>
+                                {% if friend_requests %}
+                                    <span class="notification-dot absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs text-white">
+                                        {{ friend_requests|length }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            Friend Requests
+                        </h3>
+                    </div>
+
+                    <div class="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                         {% for request in friend_requests %}
-                            <li class="flex justify-between items-center p-3 border-b border-gray-200 dark:border-gray-700" data-sender-id="{{ request[0] }}">
-                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ request[1] }}</span>
+                            <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-gradient-to-r from-orange-400 to-pink-400 flex items-center justify-center text-white font-semibold">
+                                        {{ request[1][0]|upper }}
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800 dark:text-gray-200">{{ request[1] }}</h4>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Wants to connect</p>
+                                    </div>
+                                </div>
                                 <div class="flex gap-2">
                                     <form action="{{ url_for('accept_friend', friend_id=request[0]) }}" method="POST" class="inline">
                                         {{ search_form.hidden_tag() }}
-                                        <button type="submit" class="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition min-h-12">Accept</button>
+                                        <button type="submit"
+                                                class="w-9 h-9 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white flex items-center justify-center hover:scale-110 transition">
+                                            <i class="fas fa-check"></i>
+                                        </button>
                                     </form>
                                     <form action="{{ url_for('reject_friend', friend_id=request[0]) }}" method="POST" class="inline">
                                         {{ search_form.hidden_tag() }}
-                                        <button type="submit" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 transition min-h-12">Reject</button>
+                                        <button type="submit"
+                                                class="w-9 h-9 rounded-full bg-gradient-to-r from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center hover:scale-110 transition">
+                                            <i class="fas fa-times"></i>
+                                        </button>
                                     </form>
                                 </div>
-                            </li>
+                            </div>
                         {% endfor %}
-                    </ul>
+                        {% if not friend_requests %}
+                            <div class="text-center py-8">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 mx-auto mb-3 flex items-center justify-center">
+                                    <i class="fas fa-inbox text-gray-400 text-xl"></i>
+                                </div>
+                                <p class="text-gray-500 dark:text-gray-400">No pending requests</p>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 
-            <!-- Main Content -->
-            <div class="w-full md:w-3/5 flex flex-col gap-6">
-                <div class="bg-gradient-to-br from-white to-gray-100 dark:from-gray-800 dark:to-gray-900 p-6 sm:p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                            <i class="fas fa-pen text-blue-500 dark:text-blue-300"></i> Create a Post
-                        </h2>
-                        <div class="flex gap-4">
-                            <a href="{{ url_for('face_detector') }}" class="px-5 py-3 bg-green-500 dark:bg-green-600 text-white rounded-xl hover:bg-green-600 dark:hover:bg-green-700 transform hover:scale-105 transition duration-300">Capture Photo</a>
-                            <a href="{{ url_for('profile') }}" class="px-5 py-3 bg-blue-500 dark:bg-blue-600 text-white rounded-xl hover:bg-blue-600 dark:hover:bg-blue-700 transform hover:scale-105 transition duration-300">Edit Profile</a>
+            <!-- Main Content - Posts -->
+            <div class="lg:col-span-6 space-y-6">
+                <!-- Create Post Card -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl post-card">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-2xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white">
+                                <i class="fas fa-pen"></i>
+                            </div>
+                            Create Post
+                        </h3>
+                        <div class="flex gap-3">
+                            <a href="{{ url_for('face_detector') }}"
+                               class="btn-secondary px-5 py-2.5 rounded-xl flex items-center gap-2 font-semibold">
+                                <i class="fas fa-camera"></i>
+                                Photo
+                            </a>
+                            <a href="{{ url_for('profile') }}"
+                               class="bg-gradient-to-r from-gray-700 to-gray-800 dark:from-gray-600 dark:to-gray-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-semibold hover:shadow-lg transition">
+                                <i class="fas fa-user-edit"></i>
+                                Profile
+                            </a>
                         </div>
                     </div>
-                    <form id="postForm" method="POST" action="{{ url_for('create_post') }}" enctype="multipart/form-data" class="flex flex-col gap-6">
+
+                    <form id="postForm" method="POST" action="{{ url_for('create_post') }}" enctype="multipart/form-data" class="space-y-5">
                         {{ search_form.hidden_tag() }}
-                        <textarea name="content" id="postContent" placeholder="What's on your mind?" required class="w-full p-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700 text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 min-h-32 resize-y"></textarea>
+
+                        <div>
+                            <textarea name="content" id="postContent"
+                                     placeholder="What's on your mind, {{ username }}?" required
+                                     class="input-modern w-full p-4 min-h-[120px] resize-none"></textarea>
+                        </div>
+
                         <div id="photoPreview" class="mt-4"></div>
                         <input type="hidden" name="photo_path" id="photoPath">
                         <input type="hidden" name="emotion" id="emotionInput">
-                        <label class="text-base font-medium text-gray-700 dark:text-gray-300">
-                            Attach Image:
-                            <input type="file" name="image" accept="image/*" class="block w-full mt-2 text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900 file:text-blue-500 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-800"/>
-                        </label>
-                        <div class="flex gap-4">
-                            <button type="submit" class="px-6 py-3 bg-blue-500 dark:bg-blue-600 text-white rounded-xl hover:bg-blue-600 dark:hover:bg-blue-700 transform hover:scale-105 transition duration-300">Post</button>
-                            <button type="button" id="aiEnhanceBtn" class="px-6 py-3 bg-purple-500 dark:bg-purple-600 text-white rounded-xl hover:bg-purple-600 dark:hover:bg-purple-700 transform hover:scale-105 transition duration-300">AI Enhance</button>
+
+                        <div class="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-5">
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
+                                        <i class="fas fa-image text-blue-600 dark:text-blue-400"></i>
+                                    </div>
+                                    <span class="font-medium text-gray-700 dark:text-gray-300 hidden sm:block">Photo/Video</span>
+                                    <input type="file" name="image" accept="image/*"
+                                           class="hidden" id="postImageInput">
+                                </label>
+
+                                <button type="button" id="aiEnhanceBtn"
+                                        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-400 font-medium hover:shadow transition">
+                                    <i class="fas fa-magic"></i>
+                                    <span>AI Enhance</span>
+                                </button>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+                                    <i class="fas fa-robot text-purple-500 mr-1"></i> NaNa_AI
+                                </span>
+                                <button type="submit"
+                                        class="btn-primary px-6 py-3 rounded-xl flex items-center gap-2 font-semibold">
+                                    <i class="fas fa-paper-plane"></i>
+                                    Post
+                                </button>
+                            </div>
                         </div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400 italic">Powered by NaNa_AI</div>
                     </form>
                 </div>
 
-                <!-- Modal for Post Selection -->
-                <div id="postModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-2xl">
-                        <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Choose Your Post</h2>
-                        <div class="mb-6">
-                            <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200">Original Post</h3>
-                            <p id="originalPost" class="p-4 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-700 dark:text-gray-300"></p>
-                            <button onclick="submitPost('original')" class="mt-4 px-6 py-3 bg-blue-500 dark:bg-blue-600 text-white rounded-xl hover:bg-blue-600 dark:hover:bg-blue-700 transform hover:scale-105 transition duration-300 w-full">Post Original</button>
+                <!-- Posts Section -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl post-card">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-2xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500 to-yellow-500 flex items-center justify-center text-white">
+                                <i class="fas fa-newspaper"></i>
+                            </div>
+                            Recent Posts
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-fire text-orange-500"></i>
+                            <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">Latest Updates</span>
                         </div>
-                        <div class="mb-6">
-                            <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-200">NaNa_AI Enhanced Post</h3>
-                            <p id="enhancedPost" class="p-4 bg-gray-100 dark:bg-gray-700 rounded-xl text-gray-700 dark:text-gray-300"></p>
-                            <button onclick="submitPost('enhanced')" class="mt-4 px-6 py-3 bg-purple-500 dark:bg-purple-600 text-white rounded-xl hover:bg-purple-600 dark:hover:bg-purple-700 transform hover:scale-105 transition duration-300 w-full">Post Enhanced</button>
-                        </div>
-                        <button onclick="closeModal()" class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transform hover:scale-105 transition duration-300 w-full">Cancel</button>
                     </div>
-                </div>
 
-                <div class="bg-gradient-to-br from-white to-gray-100 dark:from-gray-800 dark:to-gray-900 p-6 sm:p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300">
-                    <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                        <i class="fas fa-newspaper text-blue-500 dark:text-blue-300"></i> Posts
-                    </h2>
                     <div id="posts" class="space-y-6">
                         {% for post in posts[:5] %}
-                            <div class="post p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition duration-300" data-post-id="{{ post[0] }}">
-                                <p class="text-lg font-semibold"><strong>{{ post[3] }}</strong> <span class="text-gray-500 dark:text-gray-400">({{ post[2] }})</span>
-                                    {% if post[9] %}
-                                        <span class="text-blue-500 dark:text-blue-400"> | Эмоция: {{ post[9] }}</span>
-                                    {% endif %}
-                                </p>
-                                <p class="text-gray-700 dark:text-gray-300 mt-2 leading-relaxed">{{ post[1] }}</p>
+                            <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 post-card" data-post-id="{{ post[0] }}">
+                                <div class="flex items-start justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center justify-center text-white font-semibold text-lg">
+                                            {{ post[3][0]|upper }}
+                                        </div>
+                                        <div>
+                                            <h4 class="font-bold text-gray-800 dark:text-gray-200">{{ post[3] }}</h4>
+                                            <div class="flex items-center gap-2 text-sm">
+                                                <span class="text-gray-500 dark:text-gray-400">{{ post[2] }}</span>
+                                                {% if post[9] %}
+                                                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-pink-100 to-rose-100 dark:from-pink-900/30 dark:to-rose-900/30 text-pink-600 dark:text-pink-400">
+                                                        {{ post[9] }}
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p class="text-gray-800 dark:text-gray-200 mb-4 leading-relaxed">{{ post[1] }}</p>
+
                                 {% if post[4] %}
-                                    <img src="{{ url_for('static', filename='avatars/' + post[4]) }}" alt="Post image" class="mt-4 max-w-full rounded-lg shadow-md"/>
+                                    <div class="rounded-xl overflow-hidden mb-4 border border-gray-200 dark:border-gray-700">
+                                        <img src="{{ url_for('static', filename='avatars/' + post[4]) }}"
+                                             alt="Post image" class="w-full h-auto">
+                                    </div>
                                 {% endif %}
+
                                 <div class="flex gap-6 mt-4 items-center">
                                     <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="{{ post[0] }}">
                                         {% if post[7] == 'like' %}Unlike{% else %}Like{% endif %}
@@ -196,6 +509,7 @@
                                     <span class="dislike-count text-gray-500 dark:text-gray-400">{{ post[6] }} dislikes</span>
                                     <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="{{ post[0] }}">Comment</button>
                                 </div>
+
                                 <!-- Latest Comment -->
                                 {% if post[8] %}
                                     <div class="latest-comment mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg" id="latest-comment-{{ post[0] }}">
@@ -205,6 +519,7 @@
                                 {% else %}
                                     <div class="latest-comment mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hidden" id="latest-comment-{{ post[0] }}"></div>
                                 {% endif %}
+
                                 <div class="comments-section mt-4 hidden" id="comments-{{ post[0] }}">
                                     <div class="comments-list space-y-3"></div>
                                     <form class="comment-form mt-4 flex flex-col gap-4" data-post-id="{{ post[0] }}">
@@ -215,51 +530,93 @@
                             </div>
                         {% endfor %}
                     </div>
-                    {% if posts|length > 5 %}
-                        <button id="loadMorePosts" class="mt-4 px-6 py-3 bg-blue-500 dark:bg-blue-600 text-white rounded-xl hover:bg-blue-600 dark:hover:bg-blue-700 transform hover:scale-105 transition duration-300 w-full">Next</button>
-                    {% endif %}
-                </div>
 
-                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg">
-                    <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                        <i class="fas fa-search text-blue-400"></i> Search Friends
-                    </h2>
-                    <form method="POST" action="{{ url_for('search_user') }}" class="flex gap-3">
-                        {{ search_form.hidden_tag() }}
-                        <input type="text" name="username" placeholder="Search for users..." required class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"/>
-                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition min-h-[2.5rem]">Search</button>
-                    </form>
+                    {% if posts|length > 5 %}
+                        <button id="loadMorePosts"
+                                class="mt-6 w-full py-3 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-sync-alt"></i>
+                            Load More Posts
+                        </button>
+                    {% endif %}
                 </div>
             </div>
 
-            <!-- Right Sidebar (Chats and Notifications) -->
-            <div class="w-full md:w-2/5 flex flex-col gap-0 md:gap-6 md:flex-none md:sticky md:top-6 h-[50vh]">
-                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-xl h-full overflow-y-hidden">
-                    <h2 class="text-xl sm:text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                        <i class="fas fa-comment-alt text-blue-400"></i> Chats
-                    </h2>
-                    <ul id="chats-list" class="space-y-3">
+            <!-- Right Sidebar - Messages & Notifications & Search -->
+            <div class="lg:col-span-3 space-y-6">
+                <!-- Chats -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-lg post-card">
+                    <div class="flex items-center justify-between mb-5">
+                        <h3 class="text-xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white">
+                                <i class="fas fa-comments"></i>
+                            </div>
+                            Messages
+                        </h3>
+                    </div>
+
+                    <div id="chats-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                         {% for chat in chats %}
-                            <li class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition" data-chat-id="{{ chat[0] }}">
-                                <a href="{{ url_for('chat', chat_id=chat[0]) }}" class="text-blue-600 dark:text-blue-400 hover:underline font-semibold">{{ chat[1] }}</a>
-                                {% if chat[2] > 0 %}
-                                    <span class="bg-blue-600 text-white text-xs font-semibold rounded-full px-2 py-1">{{ chat[2] }}</span>
-                                {% endif %}
-                            </li>
+                            <a href="{{ url_for('chat', chat_id=chat[0]) }}"
+                               class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition group"
+                               data-chat-id="{{ chat[0] }}">
+                                <div class="relative">
+                                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-teal-400 to-emerald-400 flex items-center justify-center text-white font-semibold">
+                                        {{ chat[1][0]|upper }}
+                                    </div>
+                                    {% if chat[2] > 0 %}
+                                        <span class="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                                            {{ chat[2] }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition">
+                                        {{ chat[1] }}
+                                    </h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 truncate">Click to open chat</p>
+                                </div>
+                                <i class="fas fa-chevron-right text-gray-400 group-hover:text-cyan-500 transition"></i>
+                            </a>
                         {% endfor %}
-                    </ul>
+                        {% if not chats %}
+                            <div class="text-center py-8">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 mx-auto mb-3 flex items-center justify-center">
+                                    <i class="fas fa-comment-slash text-gray-400 text-xl"></i>
+                                </div>
+                                <p class="text-gray-500 dark:text-gray-400">No messages yet</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Start a conversation!</p>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-xl h-full overflow-y-hidden">
+
+                <!-- Notifications -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-lg post-card">
                     <form id="notifications-form" style="display: none;">
                         {{ search_form.hidden_tag() }}
                     </form>
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                            <i class="fas fa-bell text-blue-400"></i> Notifications
-                        </h2>
-                        <button id="clear-notifications" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition min-h-[2.5rem]">Clear All</button>
+                    <div class="flex items-center justify-between mb-5">
+                        <h3 class="text-xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                            <div class="relative">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 flex items-center justify-center text-white">
+                                    <i class="fas fa-bell"></i>
+                                </div>
+                                {% if notifications %}
+                                    <span class="notification-dot absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs text-white">
+                                        {{ notifications|length }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            Notifications
+                        </h3>
+                        <button id="clear-notifications"
+                                class="px-3 py-1.5 text-sm bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-lg hover:shadow transition flex items-center gap-1">
+                            <i class="fas fa-trash-alt text-xs"></i>
+                            Clear All
+                        </button>
                     </div>
-                    <ul id="notifications-list" class="space-y-3">
+
+                    <div id="notifications-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                         {% if notifications %}
                             {% for notification in notifications %}
                                 <li class="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
@@ -272,17 +629,130 @@
                         {% else %}
                             <li class="p-3 text-gray-500 dark:text-gray-400 italic">No new notifications</li>
                         {% endif %}
-                    </ul>
+                    </div>
+                </div>
+
+                <!-- Find Friends -->
+                <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-lg post-card">
+                    <h3 class="text-xl font-bold flex items-center gap-3 mb-4 text-gray-800 dark:text-gray-100">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        Find Friends
+                    </h3>
+                    <form method="POST" action="{{ url_for('search_user') }}" class="space-y-3">
+                        {{ search_form.hidden_tag() }}
+                        <div class="relative">
+                            <input type="text" name="username" placeholder="Search for users..." required
+                                   class="input-modern w-full pl-10 pr-4 py-3">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                        <button type="submit"
+                                class="btn-primary w-full py-3 rounded-xl font-semibold">
+                            <i class="fas fa-search mr-2"></i>
+                            Search
+                        </button>
+                    </form>
                 </div>
             </div>
         </main>
 
-        <footer class="mt-8 text-center text-gray-500 dark:text-gray-400">
-            <div>
-                <a href="{{ url_for('logout') }}" class="text-blue-600 dark:text-blue-400 hover:underline font-semibold">Logout</a> | © 2025 Nana Social Network
+        <!-- Footer -->
+        <footer class="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                        N
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 dark:text-gray-200">NaNa Social Network</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">© 2025 • Connect with the world</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-6">
+                    <a href="{{ url_for('logout') }}"
+                       class="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition font-medium">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-crown text-yellow-500 mr-1"></i>
+                        CEO: Kasatkin K.
+                    </div>
+                </div>
             </div>
-            <div class="mt-2">CEO: Kasatkin K.</div>
         </footer>
+    </div>
+
+    <!-- Story Modal -->
+    <div id="storyModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-2xl mx-4">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                    <i class="fas fa-camera text-blue-500"></i>
+                    Story View
+                </h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-6">
+                <div id="storyMedia" class="w-full h-96 mb-4 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                    <!-- Media will be inserted here -->
+                </div>
+                <p id="storyCaption" class="text-gray-800 dark:text-gray-200 text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl"></p>
+            </div>
+            <button onclick="closeModal()" class="w-full py-3 rounded-xl bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800 text-white font-semibold hover:shadow transition">
+                Close Story
+            </button>
+        </div>
+    </div>
+
+    <!-- Post Modal -->
+    <div id="postModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-2xl mx-4">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                    <i class="fas fa-robot text-purple-500"></i>
+                    Choose Your Post
+                </h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="p-5 rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+                        <i class="fas fa-user text-blue-500"></i>
+                        Original Post
+                    </h3>
+                    <p id="originalPost" class="p-4 bg-white dark:bg-gray-700 rounded-xl text-gray-800 dark:text-gray-200 mb-4"></p>
+                    <button onclick="submitPost('original')"
+                            class="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold hover:shadow transition">
+                        Post Original
+                    </button>
+                </div>
+
+                <div class="p-5 rounded-xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+                        <i class="fas fa-magic text-purple-500"></i>
+                        AI Enhanced
+                    </h3>
+                    <p id="enhancedPost" class="p-4 bg-white dark:bg-gray-700 rounded-xl text-gray-800 dark:text-gray-200 mb-4"></p>
+                    <button onclick="submitPost('enhanced')"
+                            class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:shadow transition">
+                        Post Enhanced
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="closeModal()"
+                    class="mt-6 w-full py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:border-gray-400 dark:hover:border-gray-500 transition">
+                Cancel
+            </button>
+        </div>
     </div>
 
     <script>
@@ -333,9 +803,9 @@
                         unreadSpan.textContent = unreadCount;
                     } else {
                         const newSpan = document.createElement('span');
-                        newSpan.className = 'bg-blue-500 dark:bg-blue-600 text-white text-xs px-2 py-1 rounded-full';
+                        newSpan.className = 'absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full flex items-center justify-center font-bold';
                         newSpan.textContent = unreadCount;
-                        chatItem.appendChild(newSpan);
+                        chatItem.querySelector('.relative').appendChild(newSpan);
                     }
                 }
             }
@@ -416,13 +886,31 @@
         socket.on('new_post', function(data) {
             const postsContainer = document.getElementById('posts');
             const postDiv = document.createElement('div');
-            postDiv.className = 'post p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition duration-300';
+            postDiv.className = 'bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 post-card';
             postDiv.dataset.postId = data.id;
             const emotion = data.emotion ? ` <span class="text-blue-500 dark:text-blue-400"> | Эмоция: ${data.emotion}</span>` : '';
             postDiv.innerHTML = `
-                <p class="text-lg font-semibold"><strong>${data.username}</strong> <span class="text-gray-500 dark:text-gray-400">(${data.created_at})</span>${emotion}</p>
-                <p class="text-gray-700 dark:text-gray-300 mt-2 leading-relaxed">${data.content}</p>
-                ${data.image ? `<img src="${url_for('static', filename='avatars/' + data.image)}" alt="Post image" class="mt-4 max-w-full rounded-lg shadow-md"/>` : ''}
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center justify-center text-white font-semibold text-lg">
+                            ${data.username[0].toUpperCase()}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 dark:text-gray-200">${data.username}</h4>
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="text-gray-500 dark:text-gray-400">${data.created_at}</span>
+                                ${emotion}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-gray-800 dark:text-gray-200 mb-4 leading-relaxed">${data.content}</p>
+
+                ${data.image ? `<div class="rounded-xl overflow-hidden mb-4 border border-gray-200 dark:border-gray-700">
+                    <img src="${data.image}" alt="Post image" class="w-full h-auto">
+                </div>` : ''}
+
                 <div class="flex gap-6 mt-4 items-center">
                     <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${data.id}">Like</button>
                     <span class="like-count text-gray-500 dark:text-gray-400">${data.likes} likes</span>
@@ -430,7 +918,9 @@
                     <span class="dislike-count text-gray-500 dark:text-gray-400">${data.dislikes} dislikes</span>
                     <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${data.id}">Comment</button>
                 </div>
+
                 <div class="latest-comment mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hidden" id="latest-comment-${data.id}"></div>
+
                 <div class="comments-section mt-4 hidden" id="comments-${data.id}">
                     <div class="comments-list space-y-3"></div>
                     <form class="comment-form mt-4 flex flex-col gap-4" data-post-id="${data.id}">
@@ -445,7 +935,7 @@
         });
 
         socket.on('post_reaction_updated', function(data) {
-            const post = document.querySelector(`.post[data-post-id="${data.post_id}"]`);
+            const post = document.querySelector(`.post-card[data-post-id="${data.post_id}"]`);
             if (post) {
                 const likeButton = post.querySelector('.like-btn');
                 const dislikeButton = post.querySelector('.dislike-btn');
@@ -462,17 +952,29 @@
             if (data.user_id !== userId) {
                 const storiesContainer = document.querySelector('.stories-container');
                 const storyDiv = document.createElement('div');
-                storyDiv.className = 'story bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md min-w-[150px] flex flex-col items-center';
+                storyDiv.className = 'flex flex-col items-center flex-shrink-0';
+
                 const ext = data.image ? data.image.split('.').pop().toLowerCase() : '';
+                const mediaHTML = data.image ?
+                    (['mp4', 'mov', 'avi'].includes(ext) ?
+                        `<video src="{{ url_for('serve_story_file', filename='') }}${data.image}" class="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800"></video>` :
+                        `<img src="{{ url_for('serve_story_file', filename='') }}${data.image}" alt="Story" class="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800">`) :
+                    `<div class="w-20 h-20 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 border-4 border-white dark:border-gray-800 flex items-center justify-center">
+                        <i class="fas fa-feather text-gray-400 dark:text-gray-500 text-xl"></i>
+                    </div>`;
+
                 storyDiv.innerHTML = `
-                    ${data.image ? (ext in ['mp4', 'mov', 'avi'] ?
-                        `<video src="{{ url_for('serve_story_file', filename='') }}${data.image}" class="w-20 h-20 rounded-full object-cover mb-2" controls></video>` :
-                        `<img src="{{ url_for('serve_story_file', filename='') }}${data.image}" alt="Story" class="w-20 h-20 rounded-full object-cover mb-2">`) :
-                        `<div class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-2">
-                            <span class="text-gray-500 dark:text-gray-400">No Media</span>
-                        </div>`}
-                    <p class="text-sm text-gray-700 dark:text-gray-300 text-center">${data.content || 'No content'}</p>
-                    <button onclick="viewStory(${data.story_id})" class="mt-2 px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">View</button>
+                    <div class="story-circle mb-3">
+                        <div class="story-inner">
+                            ${mediaHTML}
+                        </div>
+                    </div>
+                    <p class="text-sm text-center font-medium text-gray-700 dark:text-gray-300 truncate max-w-[100px] mb-2">
+                        ${data.content || 'Story'}
+                    </p>
+                    <button onclick="viewStory(${data.story_id})" class="story-view-btn">
+                        <i class="fas fa-eye mr-1"></i> View
+                    </button>
                 `;
                 storiesContainer.appendChild(storyDiv);
             }
@@ -502,7 +1004,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    const post = document.querySelector(`.post[data-post-id="${postId}"]`);
+                    const post = document.querySelector(`.post-card[data-post-id="${postId}"]`);
                     const likeButton = post.querySelector('.like-btn');
                     const dislikeButton = post.querySelector('.dislike-btn');
                     const likeSpan = post.querySelector('.like-count');
@@ -533,7 +1035,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    const post = document.querySelector(`.post[data-post-id="${postId}"]`);
+                    const post = document.querySelector(`.post-card[data-post-id="${postId}"]`);
                     const likeButton = post.querySelector('.like-btn');
                     const dislikeButton = post.querySelector('.dislike-btn');
                     const likeSpan = post.querySelector('.like-count');
@@ -620,13 +1122,31 @@
                     const postsContainer = document.getElementById('posts');
                     data.posts.forEach(post => {
                         const postDiv = document.createElement('div');
-                        postDiv.className = 'post p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition duration-300';
+                        postDiv.className = 'bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 post-card';
                         postDiv.dataset.postId = post.id;
                         const emotion = post.emotion ? ` <span class="text-blue-500 dark:text-blue-400"> | Эмоция: ${post.emotion}</span>` : '';
                         postDiv.innerHTML = `
-                            <p class="text-lg font-semibold"><strong>${post.username}</strong> <span class="text-gray-500 dark:text-gray-400">(${post.created_at})</span>${emotion}</p>
-                            <p class="text-gray-700 dark:text-gray-300 mt-2 leading-relaxed">${post.content}</p>
-                            ${post.image ? `<img src="${url_for('static', filename='avatars/' + post.image)}" alt="Post image" class="mt-4 max-w-full rounded-lg shadow-md"/>` : ''}
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center justify-center text-white font-semibold text-lg">
+                                        ${post.username[0].toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-gray-800 dark:text-gray-200">${post.username}</h4>
+                                        <div class="flex items-center gap-2 text-sm">
+                                            <span class="text-gray-500 dark:text-gray-400">${post.created_at}</span>
+                                            ${emotion}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-gray-800 dark:text-gray-200 mb-4 leading-relaxed">${post.content}</p>
+
+                            ${post.image ? `<div class="rounded-xl overflow-hidden mb-4 border border-gray-200 dark:border-gray-700">
+                                <img src="${post.image}" alt="Post image" class="w-full h-auto">
+                            </div>` : ''}
+
                             <div class="flex gap-6 mt-4 items-center">
                                 <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${post.id}">Like</button>
                                 <span class="like-count text-gray-500 dark:text-gray-400">${post.likes} likes</span>
@@ -634,7 +1154,9 @@
                                 <span class="dislike-count text-gray-500 dark:text-gray-400">${post.dislikes} dislikes</span>
                                 <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${post.id}">Comment</button>
                             </div>
+
                             <div class="latest-comment mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hidden" id="latest-comment-${post.id}"></div>
+
                             <div class="comments-section mt-4 hidden" id="comments-${post.id}">
                                 <div class="comments-list space-y-3"></div>
                                 <form class="comment-form mt-4 flex flex-col gap-4" data-post-id="${post.id}">
@@ -761,12 +1283,12 @@
                                 if (story.image) {
                                     const ext = story.image.split('.').pop().toLowerCase();
                                     if (['mp4', 'mov', 'avi'].includes(ext)) {
-                                        mediaDiv.innerHTML = `<video controls class="max-w-full max-h-96 object-contain"><source src="{{ url_for('serve_story_file', filename='') }}${story.image}" type="video/${ext}">Your browser does not support the video tag.</video>`;
+                                        mediaDiv.innerHTML = `<video controls class="max-w-full max-h-96 object-contain rounded-lg"><source src="{{ url_for('serve_story_file', filename='') }}${story.image}" type="video/${ext}">Your browser does not support the video tag.</video>`;
                                     } else {
-                                        mediaDiv.innerHTML = `<img src="{{ url_for('serve_story_file', filename='') }}${story.image}" alt="Story" class="max-w-full max-h-96 object-contain">`;
+                                        mediaDiv.innerHTML = `<img src="{{ url_for('serve_story_file', filename='') }}${story.image}" alt="Story" class="max-w-full max-h-96 object-contain rounded-lg">`;
                                     }
                                 } else {
-                                    mediaDiv.innerHTML = `<div class="w-full h-96 bg-gray-200 dark:bg-gray-700 flex items-center justify-center"><span class="text-gray-500 dark:text-gray-400">No Media</span></div>`;
+                                    mediaDiv.innerHTML = `<div class="w-full h-96 bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded-lg"><span class="text-gray-500 dark:text-gray-400">No Media</span></div>`;
                                 }
                                 captionDiv.textContent = story.content || 'No caption';
                                 document.getElementById('storyModal').classList.remove('hidden');
@@ -788,19 +1310,6 @@
             });
         }
 
-        function get_story(storyId) {
-            // This is a placeholder; implement the actual route in main.py
-            fetch(`/get_story/${storyId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        return data;
-                    } else {
-                        throw new Error(data.message);
-                    }
-                });
-        }
-
         attachCommentListeners();
         attachReactionListeners();
 
@@ -809,9 +1318,19 @@
         const emotion = urlParams.get('emotion');
         const content = urlParams.get('content');
         if (photoPath) {
-            document.getElementById('photoPath').value = photoPath; // Use full path
-            const filename = photoPath.split('/').pop(); // Extract filename for preview
-            document.getElementById('photoPreview').innerHTML = `<img src="${url_for('static', filename='avatars/' + filename)}" alt="Captured photo" class="mt-4 max-w-full rounded-lg"/>`;
+            document.getElementById('photoPath').value = photoPath;
+            const filename = photoPath.split('/').pop();
+            document.getElementById('photoPreview').innerHTML = `
+                <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mt-3">
+                    <img src="{{ url_for('static', filename='avatars/') }}${filename}" alt="Captured photo" class="w-full h-48 object-cover">
+                    <div class="p-3 bg-gray-50 dark:bg-gray-700 flex justify-between items-center">
+                        <span class="text-sm text-gray-600 dark:text-gray-300">Captured Photo</span>
+                        <button type="button" onclick="this.parentElement.parentElement.remove()"
+                                class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>`;
             if (emotion) {
                 document.getElementById('emotionInput').value = emotion;
             }
@@ -819,6 +1338,31 @@
                 document.getElementById('postContent').value = content;
             }
         }
+
+        // Обработчик для загрузки изображения в пост
+        document.getElementById('postImageInput')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const preview = document.getElementById('photoPreview');
+                    preview.innerHTML = `
+                        <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mt-3">
+                            <img src="${event.target.result}" alt="Preview" class="w-full h-48 object-cover">
+                            <div class="p-3 bg-gray-50 dark:bg-gray-700 flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-300">${file.name}</span>
+                                <button type="button" onclick="this.parentElement.parentElement.remove()"
+                                        class="text-red-500 hover:text-red-700">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
     </script>
 </body>
 </html>
+
