@@ -1,19 +1,188 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="w-full h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile</title>
-    <!-- Tailwind CSS CDN -->
+    <title>{{ user[0] }} - Profile | NaNa</title>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React and ReactDOM CDNs -->
     <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-    <!-- Babel CDN for JSX transpilation -->
     <script src="https://unpkg.com/@babel/standalone@7.22.10/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --secondary: #8b5cf6;
+            --accent: #10b981;
+        }
+
+        .profile-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--accent), #0ea5e9);
+            color: white;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .input-modern {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            background: white;
+            color: #1f2937;
+        }
+
+        .dark .input-modern {
+            border-color: #4b5563;
+            background: #374151;
+            color: #f9fafb;
+        }
+
+        .input-modern:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .profile-card {
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .profile-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .dark .profile-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+        }
+
+        .avatar-ring {
+            position: relative;
+            background: linear-gradient(45deg, #f59e0b, #ec4899, #8b5cf6);
+            padding: 4px;
+            border-radius: 50%;
+        }
+
+        .avatar-inner {
+            background: white;
+            border-radius: 50%;
+            padding: 2px;
+        }
+
+        .dark .avatar-inner {
+            background: #1f2937;
+        }
+
+        .interest-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .interest-tag:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        .file-upload {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 2px dashed #3b82f6;
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .dark .file-upload {
+            background: linear-gradient(135deg, #1e3a8a, #1e40af);
+            border-color: #8b5cf6;
+        }
+
+        .file-upload:hover {
+            background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+            transform: translateY(-2px);
+        }
+
+        .dark .file-upload:hover {
+            background: linear-gradient(135deg, #1e40af, #1d4ed8);
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen font-poppins text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <!-- Header (статичная часть) -->
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <header class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white p-8 rounded-2xl shadow-2xl mb-8 relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-black/10"></div>
+            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between">
+                <div class="text-center md:text-left mb-6 md:mb-0">
+                    <h1 class="text-4xl sm:text-5xl font-bold mb-3">
+                        <span class="text-white bg-clip-text bg-gradient-to-r from-yellow-300 to-white drop-shadow-lg">{{ user[0] }}</span>'s Profile
+                    </h1>
+                    <p class="text-xl opacity-90">
+                        <i class="fas fa-star text-yellow-300 mr-2"></i>
+                        NaNa Member Since {{ user[8] if user|length > 8 else '2025' }}
+                    </p>
+                </div>
+                <a href="{{ url_for('home') }}"
+                   class="btn-primary px-6 py-3 rounded-xl font-semibold flex items-center gap-2">
+                    <i class="fas fa-home"></i>
+                    Back to Home
+                </a>
+            </div>
+        </header>
+    </div>
+
+    <!-- React приложение -->
     <div id="root"></div>
+
     <!-- Pass data from Flask to React as JSON including CSRF token -->
     <script type="application/json" id="initial-data">
         {
@@ -24,6 +193,37 @@
             "csrf_token": {{ csrf_token() | tojson }}
         }
     </script>
+
+    <!-- Footer (статичная часть) -->
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <footer class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 dark:text-gray-200">{{ user[0] }}'s Profile</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">NaNa Social Network Profile Page</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-6">
+                    <a href="{{ url_for('home') }}"
+                       class="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition font-medium">
+                        <i class="fas fa-home"></i>
+                        <span>Home</span>
+                    </a>
+                    <a href="{{ url_for('logout') }}"
+                       class="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition font-medium">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
     <script type="text/babel">
         console.log("Script loaded");
 
@@ -95,56 +295,156 @@
             }
         }
 
-        // ProfileInfo Component
+        // ProfileInfo Component (стилизованная)
         const ProfileInfo = ({ user, onEdit }) => {
             console.log("Rendering ProfileInfo", user);
             return (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 className="text-2xl font-bold mb-4 text-gray-800">Profile Information</h2>
-                    {user.avatar ? (
-                        <img
-                            src={user.avatar}
-                            alt="Avatar"
-                            className="w-32 h-32 rounded-full object-cover mx-auto mb-4"
-                        />
-                    ) : (
-                        <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
-                            <span className="text-gray-500">No Avatar</span>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl profile-card mb-6">
+                    <div className="flex flex-col items-center mb-6">
+                        {user.avatar ? (
+                            <div className="avatar-ring mb-4">
+                                <div className="avatar-inner">
+                                    <img
+                                        src={user.avatar}
+                                        alt="Avatar"
+                                        className="w-32 h-32 rounded-full object-cover"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="avatar-ring mb-4">
+                                <div className="avatar-inner">
+                                    <div className="w-32 h-32 rounded-full bg-gradient-to-r from-blue-400 to-purple-400 flex items-center justify-center">
+                                        <span className="text-4xl font-bold text-white">{user.username[0]?.toUpperCase() || "U"}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">{user.username}</h2>
+
+                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-4">
+                            <i className="fas fa-map-marker-alt"></i>
+                            <span>{user.city || 'Location not set'}</span>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-3 gap-4 w-full mt-6">
+                            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-xl text-center">
+                                <div className="text-2xl font-bold text-blue-600 dark:text-blue-300">{initialData.posts.length}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Posts</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-xl text-center">
+                                <div className="text-2xl font-bold text-purple-600 dark:text-purple-300">{initialData.friends.length}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Friends</div>
+                            </div>
+                            <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-xl text-center">
+                                <div className="text-2xl font-bold text-green-600 dark:text-green-300">
+                                    <i className="fas fa-heart"></i>
+                                </div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Active</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Profile Details */}
+                    <div className="space-y-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 flex items-center justify-center">
+                                <i className="fas fa-user text-blue-600 dark:text-blue-300"></i>
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-gray-700 dark:text-gray-300">About Me</h3>
+                                <p className="text-gray-600 dark:text-gray-400">{user.description || 'No description yet'}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 flex items-center justify-center">
+                                <i className="fas fa-heart text-purple-600 dark:text-purple-300"></i>
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-gray-700 dark:text-gray-300">Relationship Status</h3>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                    {user.relationshipStatus === 'интересуюсь' ? (
+                                        <span className="text-green-600 dark:text-green-400 font-medium">Looking for a relationship</span>
+                                    ) : (
+                                        <span className="text-blue-600 dark:text-blue-400 font-medium">Not interested in relationships</span>
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-pink-100 to-pink-200 dark:from-pink-900 dark:to-pink-800 flex items-center justify-center">
+                                <i className="fas fa-venus-mars text-pink-600 dark:text-pink-300"></i>
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-gray-700 dark:text-gray-300">Gender</h3>
+                                <p className="text-gray-600 dark:text-gray-400">
+                                    {user.gender === 'Male' ? (
+                                        <span className="text-blue-600 dark:text-blue-400">Male</span>
+                                    ) : (
+                                        <span className="text-pink-600 dark:text-pink-400">Female</span>
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Interests */}
+                    {user.interests && (
+                        <div className="mt-6">
+                            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Interests</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {user.interests.split(',').map((interest, index) => (
+                                    <span key={index} className="interest-tag">{interest.trim()}</span>
+                                ))}
+                            </div>
                         </div>
                     )}
-                    <p className="text-lg"><strong>Username:</strong> {user.username}</p>
-                    <p className="text-lg"><strong>Description:</strong> {user.description || "No description"}</p>
-                    <p className="text-lg"><strong>Relationship Status:</strong> {user.relationshipStatus}</p>
-                    <p className="text-lg"><strong>Gender:</strong> {user.gender}</p>
-                    <p className="text-lg"><strong>Interests:</strong> {user.interests || "Not specified"}</p>
-                    <p className="text-lg"><strong>City:</strong> {user.city || "Not specified"}</p>
+
                     <button
                         onClick={() => {
                             console.log("Edit Profile clicked");
                             onEdit();
                         }}
-                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        className="btn-primary w-full mt-6 px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
                     >
+                        <i className="fas fa-edit"></i>
                         Edit Profile
                     </button>
                 </div>
             );
         };
 
-        // AvatarUpload Component
+        // AvatarUpload Component (стилизованная)
         const AvatarUpload = ({ user, onUpload }) => {
             const [file, setFile] = useState(null);
+            const [preview, setPreview] = useState(null);
+
+            const handleFileChange = (e) => {
+                const selectedFile = e.target.files[0];
+                setFile(selectedFile);
+                if (selectedFile) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setPreview(reader.result);
+                    };
+                    reader.readAsDataURL(selectedFile);
+                }
+            };
 
             const handleUpload = () => {
                 if (file) {
                     const formData = new FormData();
                     formData.append("avatar", file);
-                    formData.append("csrf_token", csrfToken); // Ensure CSRF token is included
+                    formData.append("csrf_token", csrfToken);
                     fetch("/profile", {
                         method: "POST",
                         body: formData,
                         headers: {
-                            'X-CSRFToken': csrfToken // Add CSRF token to headers as a fallback
+                            'X-CSRFToken': csrfToken
                         }
                     })
                         .then(response => {
@@ -155,6 +455,7 @@
                             if (data.status === 'success' && data.avatar) {
                                 onUpload(data.avatar);
                                 setFile(null);
+                                setPreview(null);
                             } else {
                                 console.error("Upload failed:", data.message);
                             }
@@ -164,39 +465,66 @@
             };
 
             return (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 className="text-2xl font-bold mb-4 text-gray-800">Upload Avatar</h2>
-                    <div>
-                        <label htmlFor="avatar" className="block text-sm font-medium text-gray-700 mb-2 font-bold">
-                            Choose Avatar:
-                        </label>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl profile-card mb-6">
+                    <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white">
+                            <i className="fas fa-camera"></i>
+                        </div>
+                        Upload Avatar
+                    </h2>
+
+                    <div className="mb-4">
+                        {preview ? (
+                            <div className="avatar-ring mx-auto mb-4">
+                                <div className="avatar-inner">
+                                    <img
+                                        src={preview}
+                                        alt="Preview"
+                                        className="w-32 h-32 rounded-full object-cover"
+                                    />
+                                </div>
+                            </div>
+                        ) : user.avatar ? (
+                            <div className="avatar-ring mx-auto mb-4">
+                                <div className="avatar-inner">
+                                    <img
+                                        src={user.avatar}
+                                        alt="Current Avatar"
+                                        className="w-32 h-32 rounded-full object-cover"
+                                    />
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <div className="file-upload mb-4" onClick={() => document.getElementById("avatar").click()}>
+                        <i className="fas fa-cloud-upload-alt text-3xl text-blue-500 mb-3"></i>
+                        <p className="text-gray-600 dark:text-gray-400 mb-2">Click to upload new avatar</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-500">PNG, JPG, GIF up to 5MB</p>
                         <input
                             type="file"
                             id="avatar"
                             accept="image/*"
-                            onChange={(e) => setFile(e.target.files[0])}
-                            className="block w-full text-sm text-gray-500
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-lg file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-blue-50 file:text-blue-700
-                                hover:file:bg-blue-100"
+                            onChange={handleFileChange}
+                            className="hidden"
                         />
-                        <button
-                            onClick={handleUpload}
-                            disabled={!file}
-                            className={`mt-4 px-4 py-2 rounded-lg text-white ${
-                                file ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400 cursor-not-allowed"
-                            } transition`}
-                        >
-                            Upload
-                        </button>
                     </div>
+
+                    <button
+                        onClick={handleUpload}
+                        disabled={!file}
+                        className={`w-full px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${
+                            file ? "btn-primary" : "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        }`}
+                    >
+                        <i className="fas fa-upload"></i>
+                        Upload Avatar
+                    </button>
                 </div>
             );
         };
 
-        // EditProfile Component
+        // EditProfile Component (стилизованная)
         const EditProfile = ({ user, cities, onSave, onCancel }) => {
             const [formData, setFormData] = useState({
                 description: user.description || "",
@@ -219,12 +547,12 @@
                 saveData.append("city", formData.city);
                 saveData.append("gender", formData.gender);
                 saveData.append("interests", formData.interests);
-                saveData.append("csrf_token", csrfToken); // Ensure CSRF token is included
+                saveData.append("csrf_token", csrfToken);
                 fetch("/profile", {
                     method: "POST",
                     body: saveData,
                     headers: {
-                        'X-CSRFToken': csrfToken // Add CSRF token to headers as a fallback
+                        'X-CSRFToken': csrfToken
                     }
                 })
                     .then(response => {
@@ -240,84 +568,108 @@
 
             console.log("Rendering EditProfile", formData);
             return (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 className="text-2xl font-bold mb-4 text-gray-800">Edit Profile</h2>
-                    <div>
-                        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2 font-bold">
-                            Description:
-                        </label>
-                        <textarea
-                            id="description"
-                            name="description"
-                            rows="4"
-                            value={formData.description}
-                            onChange={handleChange}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800"
-                        />
-                        <label htmlFor="relationshipStatus" className="block text-sm font-medium text-gray-700 mt-4 mb-2 font-bold">
-                            Relationship Status:
-                        </label>
-                        <select
-                            id="relationshipStatus"
-                            name="relationshipStatus"
-                            value={formData.relationshipStatus}
-                            onChange={handleChange}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800"
-                        >
-                            <option value="не интересуюсь">не интересуюсь</option>
-                            <option value="интересуюсь">интересуюсь</option>
-                        </select>
-                        <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mt-4 mb-2 font-bold">
-                            Gender:
-                        </label>
-                        <select
-                            id="gender"
-                            name="gender"
-                            value={formData.gender}
-                            onChange={handleChange}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800"
-                        >
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                        </select>
-                        <label htmlFor="interests" className="block text-sm font-medium text-gray-700 mt-4 mb-2 font-bold">
-                            Interests (comma-separated):
-                        </label>
-                        <textarea
-                            id="interests"
-                            name="interests"
-                            rows="2"
-                            value={formData.interests}
-                            onChange={handleChange}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800"
-                            placeholder="e.g., gaming, music, sports"
-                        />
-                        <label htmlFor="city" className="block text-sm font-medium text-gray-700 mt-4 mb-2 font-bold">
-                            City:
-                        </label>
-                        <select
-                            id="city"
-                            name="city"
-                            value={formData.city}
-                            onChange={handleChange}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800"
-                        >
-                            <option value="">Not specified</option>
-                            {cities.map((city) => (
-                                <option key={city} value={city}>{city}</option>
-                            ))}
-                        </select>
-                        <div className="mt-4 flex space-x-4">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl profile-card mb-6">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white">
+                            <i className="fas fa-user-edit"></i>
+                        </div>
+                        Edit Profile
+                    </h2>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <i className="fas fa-pen mr-2"></i>About Me
+                            </label>
+                            <textarea
+                                id="description"
+                                name="description"
+                                rows="3"
+                                value={formData.description}
+                                onChange={handleChange}
+                                className="input-modern w-full p-4 resize-none"
+                                placeholder="Tell us about yourself..."
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="relationshipStatus" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <i className="fas fa-heart mr-2"></i>Relationship Status
+                            </label>
+                            <select
+                                id="relationshipStatus"
+                                name="relationshipStatus"
+                                value={formData.relationshipStatus}
+                                onChange={handleChange}
+                                className="input-modern w-full p-3"
+                            >
+                                <option value="не интересуюсь">Not interested in relationships</option>
+                                <option value="интересуюсь">Looking for a relationship</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <i className="fas fa-venus-mars mr-2"></i>Gender
+                            </label>
+                            <select
+                                id="gender"
+                                name="gender"
+                                value={formData.gender}
+                                onChange={handleChange}
+                                className="input-modern w-full p-3"
+                            >
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label htmlFor="interests" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <i className="fas fa-tags mr-2"></i>Interests (comma-separated)
+                            </label>
+                            <input
+                                id="interests"
+                                name="interests"
+                                type="text"
+                                value={formData.interests}
+                                onChange={handleChange}
+                                className="input-modern w-full p-3"
+                                placeholder="e.g., gaming, music, sports, photography"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="city" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <i className="fas fa-map-marker-alt mr-2"></i>City
+                            </label>
+                            <select
+                                id="city"
+                                name="city"
+                                value={formData.city}
+                                onChange={handleChange}
+                                className="input-modern w-full p-3"
+                            >
+                                <option value="">Select your city</option>
+                                {cities.map((city) => (
+                                    <option key={city} value={city}>{city}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="flex gap-4 pt-4">
                             <button
                                 onClick={handleSave}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                                className="btn-primary flex-1 px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
                             >
+                                <i className="fas fa-save"></i>
                                 Save Changes
                             </button>
                             <button
                                 onClick={onCancel}
-                                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition"
+                                className="flex-1 px-6 py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:border-gray-400 dark:hover:border-gray-500 transition flex items-center justify-center gap-2"
                             >
+                                <i className="fas fa-times"></i>
                                 Cancel
                             </button>
                         </div>
@@ -326,7 +678,7 @@
             );
         };
 
-        // RelationshipStatus Component
+        // RelationshipStatus Component (стилизованная)
         const RelationshipStatus = ({ currentStatus, onSave }) => {
             const [status, setStatus] = useState(currentStatus);
 
@@ -338,12 +690,12 @@
                 saveData.append("city", initialUser.city || "");
                 saveData.append("gender", initialUser.gender);
                 saveData.append("interests", initialUser.interests || "");
-                saveData.append("csrf_token", csrfToken); // Ensure CSRF token is included
+                saveData.append("csrf_token", csrfToken);
                 fetch("/profile", {
                     method: "POST",
                     body: saveData,
                     headers: {
-                        'X-CSRFToken': csrfToken // Add CSRF token to headers as a fallback
+                        'X-CSRFToken': csrfToken
                     }
                 })
                     .then(response => {
@@ -358,25 +710,31 @@
             };
 
             return (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 className="text-2xl font-bold mb-4 text-gray-800">Change Relationship Status</h2>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl profile-card mb-6">
+                    <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-white">
+                            <i className="fas fa-heartbeat"></i>
+                        </div>
+                        Change Relationship Status
+                    </h2>
                     <div>
-                        <label htmlFor="relationshipStatusStandalone" className="block text-sm font-medium text-gray-700 mb-2 font-bold">
-                            Relationship Status:
+                        <label htmlFor="relationshipStatusStandalone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            <i className="fas fa-heart mr-2"></i>Relationship Status
                         </label>
                         <select
                             id="relationshipStatusStandalone"
                             value={status}
                             onChange={(e) => setStatus(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-800"
+                            className="input-modern w-full p-3 mb-4"
                         >
-                            <option value="не интересуюсь">не интересуюсь</option>
-                            <option value="интересуюсь">интересуюсь</option>
+                            <option value="не интересуюсь">Not interested in relationships</option>
+                            <option value="интересуюсь">Looking for a relationship</option>
                         </select>
                         <button
                             onClick={handleSave}
-                            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                            className="btn-secondary w-full px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
                         >
+                            <i className="fas fa-check"></i>
                             Save Status
                         </button>
                     </div>
@@ -384,24 +742,50 @@
             );
         };
 
-        // FriendsList Component
+        // FriendsList Component (стилизованная)
         const FriendsList = ({ friends }) => (
-            <div className="mb-6">
-                <h2 className="text-2xl font-bold mb-4 text-gray-800">Your Friends</h2>
-                <ul className="space-y-2">
-                    {friends.map((friend) => (
-                        <li
-                            key={friend.id}
-                            className="bg-white p-4 rounded-lg shadow-md text-gray-800"
-                        >
-                            {friend.username}
-                        </li>
-                    ))}
-                </ul>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl profile-card mb-6">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-orange-500 to-yellow-500 flex items-center justify-center text-white">
+                            <i className="fas fa-users"></i>
+                        </div>
+                        Your Friends ({friends.length})
+                    </h2>
+                    <span className="text-sm font-medium px-4 py-2 rounded-full bg-gradient-to-r from-orange-100 to-yellow-100 dark:from-orange-900/30 dark:to-yellow-900/30 text-orange-700 dark:text-orange-400">
+                        {friends.length} friends
+                    </span>
+                </div>
+
+                {friends.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {friends.map((friend) => (
+                            <div key={friend.id} className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center justify-center text-white font-semibold text-lg">
+                                        {friend.username[0]?.toUpperCase() || "F"}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-gray-800 dark:text-gray-200">{friend.username}</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">Friend</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-8">
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 mx-auto mb-4 flex items-center justify-center">
+                            <i className="fas fa-user-friends text-gray-400 text-2xl"></i>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No Friends Yet</h3>
+                        <p className="text-gray-500 dark:text-gray-400">Start connecting with people on NaNa!</p>
+                    </div>
+                )}
             </div>
         );
 
-        // Main App Component
+        // Main App Component (стилизованная)
         const App = () => {
             const [user, setUser] = useState(initialUser);
             const [friends] = useState(initialFriends);
@@ -427,39 +811,32 @@
             console.log("Rendering App, isEditing:", isEditing);
             return (
                 <ErrorBoundary>
-                    <div className="max-w-4xl mx-auto p-4">
-                        <header className="bg-blue-600 text-white p-6 rounded-lg shadow-md mb-6 text-center">
-                            <h1 className="text-3xl font-bold">Welcome, {user.username}</h1>
-                        </header>
-                        <main>
-                            {isEditing ? (
-                                <EditProfile
-                                    user={user}
-                                    cities={cities}
-                                    onSave={handleProfileSave}
-                                    onCancel={() => {
-                                        console.log("Cancel EditProfile");
-                                        setIsEditing(false);
-                                    }}
-                                />
-                            ) : (
-                                <ProfileInfo user={user} onEdit={() => {
-                                    console.log("Setting isEditing to true");
-                                    setIsEditing(true);
-                                }} />
-                            )}
-                            <RelationshipStatus
-                                currentStatus={user.relationshipStatus}
-                                onSave={handleRelationshipStatusSave}
-                            />
-                            <AvatarUpload user={user} onUpload={handleAvatarUpload} />
-                            <FriendsList friends={friends} />
-                            <a
-                                href="{{ url_for('home') }}"
-                                className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                            >
-                                Back to Home
-                            </a>
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Left Column */}
+                            <div className="lg:col-span-1 space-y-6">
+                                {!isEditing && <ProfileInfo user={user} onEdit={() => setIsEditing(true)} />}
+                                <AvatarUpload user={user} onUpload={handleAvatarUpload} />
+                            </div>
+
+                            {/* Center Column */}
+                            <div className="lg:col-span-2 space-y-6">
+                                {isEditing ? (
+                                    <EditProfile
+                                        user={user}
+                                        cities={cities}
+                                        onSave={handleProfileSave}
+                                        onCancel={() => setIsEditing(false)}
+                                    />
+                                ) : (
+                                    <RelationshipStatus
+                                        currentStatus={user.relationshipStatus}
+                                        onSave={handleRelationshipStatusSave}
+                                    />
+                                )}
+
+                                <FriendsList friends={friends} />
+                            </div>
                         </main>
                     </div>
                 </ErrorBoundary>
