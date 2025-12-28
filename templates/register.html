@@ -1,114 +1,496 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="w-full h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
+    <title>Register - NaNa Social</title>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f2f5;
-            color: #050505;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --secondary: #8b5cf6;
+            --accent: #10b981;
         }
 
-        .register-container {
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .input-modern {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            transition: all 0.3s ease;
             background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
+            color: #1f2937;
         }
 
-        h1 {
-            text-align: center;
-            font-size: 24px;
-            margin-bottom: 20px;
+        .dark .input-modern {
+            border-color: #4b5563;
+            background: #374151;
+            color: #f9fafb;
         }
 
-        label {
-            display: block;
-            margin-top: 10px;
+        .input-modern:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .register-card {
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .register-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15);
+        }
+
+        .dark .register-card {
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+        }
+
+        .floating-element {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .pulse-ring {
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(1.2); opacity: 0; }
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
             font-weight: bold;
-        }
-
-        input[type="text"],
-        input[type="password"],
-        textarea,
-        select {
-            width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
             font-size: 14px;
         }
 
-        button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 20px;
-            background-color: #1877f2;
+        .step-active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
         }
 
-        button:hover {
-            background-color: #155db0;
+        .step-inactive {
+            background: #e5e7eb;
+            color: #9ca3af;
         }
 
-        p {
-            color: red;
-            text-align: center;
+        /* Smooth transitions */
+        * {
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* Custom scrollbar for select */
+        select {
+            scrollbar-width: thin;
+            scrollbar-color: #3b82f6 #e5e7eb;
+        }
+
+        .dark select {
+            scrollbar-color: #3b82f6 #4b5563;
         }
     </style>
 </head>
-<body>
-    <div class="register-container">
-        <h1>Register</h1>
-        <form method="post">
-            {{ form.hidden_tag() }} <!-- Добавлен CSRF-токен -->
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required>
-
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-
-            <label for="confirm_password">Confirm Password:</label>
-            <input type="password" id="confirm_password" name="confirm_password" required>
-
-            <label for="description">Description:</label>
-            <textarea id="description" name="description" rows="4"></textarea>
-
-            <label for="city">City:</label>
-            <select id="city" name="city">
-                <option value="">Not specified</option>
-                {% for city in cities %}
-                    <option value="{{ city }}">{{ city }}</option>
-                {% endfor %}
-            </select>
-
-            <label for="gender">Gender:</label>
-            <select id="gender" name="gender" required>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-            </select>
-
-            <label for="interests">Interests (comma-separated):</label>
-            <textarea id="interests" name="interests" rows="2" placeholder="e.g., gaming, music, sports"></textarea>
-
-            <button type="submit">Register</button>
-        </form>
-        <p><a href="{{ url_for('login') }}">Already have an account? Login</a></p>
+<body class="bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 min-h-screen font-poppins">
+    <!-- Theme Toggle -->
+    <div class="theme-toggle">
+        <button id="theme-toggle" class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+            <i id="theme-icon" class="fas fa-moon"></i>
+        </button>
     </div>
+
+    <!-- Animated Background Elements -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-blue-300 to-purple-300 dark:from-blue-700 dark:to-purple-700 rounded-full opacity-20 blur-3xl floating-element"></div>
+        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-r from-pink-300 to-rose-300 dark:from-pink-700 dark:to-rose-700 rounded-full opacity-20 blur-3xl floating-element" style="animation-delay: -3s;"></div>
+    </div>
+
+    <div class="min-h-screen flex items-center justify-center p-4 py-8">
+        <div class="register-card w-full max-w-2xl">
+            <!-- Card Header -->
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 text-center">
+                <div class="relative inline-block mb-6">
+                    <div class="w-20 h-20 rounded-full bg-gradient-to-r from-yellow-400 to-pink-500 flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4 pulse-ring relative">
+                        <div class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-700 flex items-center justify-center absolute">
+                            N
+                        </div>
+                    </div>
+                </div>
+                <h1 class="text-3xl font-bold mb-2">Join <span class="text-yellow-300">NaNa</span> Today</h1>
+                <p class="text-blue-100 opacity-90">Create your account and start connecting</p>
+
+                <!-- Progress Steps -->
+                <div class="mt-6 flex items-center justify-center gap-2">
+                    <div class="step-indicator step-active">1</div>
+                    <div class="w-8 h-1 bg-blue-400"></div>
+                    <div class="step-indicator step-active">2</div>
+                    <div class="w-8 h-1 bg-blue-400"></div>
+                    <div class="step-indicator step-active">3</div>
+                </div>
+            </div>
+
+            <!-- Registration Form -->
+            <div class="bg-white dark:bg-gray-800 p-8">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6 text-center">Create Your Account</h2>
+
+                <form method="post" class="space-y-6">
+                    {{ form.hidden_tag() }}
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Left Column -->
+                        <div class="space-y-6">
+                            <div>
+                                <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-user-circle mr-2 text-blue-500"></i>Username *
+                                </label>
+                                <input type="text" id="username" name="username" required
+                                       class="input-modern w-full px-4 py-3"
+                                       placeholder="Choose a username">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">This will be your public name</p>
+                            </div>
+
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-lock mr-2 text-blue-500"></i>Password *
+                                </label>
+                                <input type="password" id="password" name="password" required
+                                       class="input-modern w-full px-4 py-3"
+                                       placeholder="Create a strong password">
+                                <div class="mt-1 flex items-center gap-2">
+                                    <div class="w-1/4 h-1 rounded-full bg-gray-300"></div>
+                                    <div class="w-1/4 h-1 rounded-full bg-gray-300"></div>
+                                    <div class="w-1/4 h-1 rounded-full bg-gray-300"></div>
+                                    <span class="text-xs text-gray-500">Password strength</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="confirm_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-lock mr-2 text-blue-500"></i>Confirm Password *
+                                </label>
+                                <input type="password" id="confirm_password" name="confirm_password" required
+                                       class="input-modern w-full px-4 py-3"
+                                       placeholder="Confirm your password">
+                            </div>
+
+                            <div>
+                                <label for="city" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-city mr-2 text-blue-500"></i>City
+                                </label>
+                                <select id="city" name="city"
+                                        class="input-modern w-full px-4 py-3">
+                                    <option value="">Select your city</option>
+                                    {% for city in cities %}
+                                        <option value="{{ city }}">{{ city }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="space-y-6">
+                            <div>
+                                <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-edit mr-2 text-blue-500"></i>About You
+                                </label>
+                                <textarea id="description" name="description" rows="4"
+                                          class="input-modern w-full px-4 py-3 resize-none"
+                                          placeholder="Tell us about yourself..."></textarea>
+                            </div>
+
+                            <div>
+                                <label for="gender" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-venus-mars mr-2 text-blue-500"></i>Gender *
+                                </label>
+                                <select id="gender" name="gender" required
+                                        class="input-modern w-full px-4 py-3">
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="interests" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <i class="fas fa-heart mr-2 text-blue-500"></i>Interests
+                                </label>
+                                <textarea id="interests" name="interests" rows="2"
+                                          class="input-modern w-full px-4 py-3 resize-none"
+                                          placeholder="e.g., gaming, music, sports, photography"></textarea>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Separate with commas</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Terms and Conditions -->
+                    <div class="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
+                        <input type="checkbox" id="terms" name="terms" required
+                               class="mt-1 w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <label for="terms" class="text-sm text-gray-700 dark:text-gray-300">
+                            I agree to the
+                            <a href="#" class="text-blue-600 dark:text-blue-400 hover:underline">Terms of Service</a>
+                            and
+                            <a href="#" class="text-blue-600 dark:text-blue-400 hover:underline">Privacy Policy</a>
+                            . I understand that NaNa may send me communications about my account.
+                        </label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit"
+                            class="btn-primary w-full py-3 rounded-xl font-semibold text-lg mt-4">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        Create Account & Join NaNa
+                    </button>
+
+                    <!-- Error Messages -->
+                    {% with messages = get_flashed_messages() %}
+                        {% if messages %}
+                            <div class="mt-4 p-4 rounded-xl bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border border-red-200 dark:border-red-800">
+                                <div class="flex items-center gap-2 text-red-600 dark:text-red-400">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span class="font-medium">{{ messages[0] }}</span>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+                </form>
+
+                <!-- Login Link -->
+                <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
+                    <p class="text-gray-600 dark:text-gray-400">
+                        Already have an account?
+                        <a href="{{ url_for('login') }}" class="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition ml-1">
+                            <i class="fas fa-sign-in-alt mr-1"></i>Login Here
+                        </a>
+                    </p>
+                </div>
+
+                <!-- Benefits -->
+                <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-800 dark:text-gray-200">Connect</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">With friends worldwide</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white">
+                            <i class="fas fa-share-alt"></i>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-800 dark:text-gray-200">Share</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">Your stories and moments</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-white">
+                            <i class="fas fa-compass"></i>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-800 dark:text-gray-200">Discover</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">New people and content</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Footer -->
+            <div class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 p-4 text-center">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Your information is protected with 256-bit SSL encryption
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="fixed bottom-0 left-0 right-0 py-4 text-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+                © 2025 NaNa Social Network •
+                <span class="font-semibold">CEO: Kasatkin K.</span> •
+                <i class="fas fa-shield-alt text-green-500 mx-1"></i>
+                Secure Registration
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Theme Toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+
+        // Check for saved theme or prefer-color-scheme
+        if (localStorage.getItem('color-theme') === 'dark' ||
+            (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+        } else {
+            document.documentElement.classList.remove('dark');
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+
+            if (document.documentElement.classList.contains('dark')) {
+                localStorage.setItem('color-theme', 'dark');
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            } else {
+                localStorage.setItem('color-theme', 'light');
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            }
+        });
+
+        // Password strength indicator
+        const passwordInput = document.getElementById('password');
+        const strengthBars = document.querySelectorAll('.w-1\\/4');
+
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            let strength = 0;
+
+            if (password.length > 0) strength++;
+            if (password.length >= 8) strength++;
+            if (/[A-Z]/.test(password) && /[a-z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+
+            // Update strength bars
+            strengthBars.forEach((bar, index) => {
+                if (index < strength) {
+                    if (strength < 3) {
+                        bar.classList.remove('bg-gray-300', 'bg-yellow-500', 'bg-green-500');
+                        bar.classList.add('bg-red-500');
+                    } else if (strength < 4) {
+                        bar.classList.remove('bg-gray-300', 'bg-red-500', 'bg-green-500');
+                        bar.classList.add('bg-yellow-500');
+                    } else {
+                        bar.classList.remove('bg-gray-300', 'bg-red-500', 'bg-yellow-500');
+                        bar.classList.add('bg-green-500');
+                    }
+                } else {
+                    bar.classList.remove('bg-red-500', 'bg-yellow-500', 'bg-green-500');
+                    bar.classList.add('bg-gray-300');
+                }
+            });
+        });
+
+        // Confirm password validation
+        const confirmPasswordInput = document.getElementById('confirm_password');
+
+        confirmPasswordInput.addEventListener('input', function() {
+            const password = passwordInput.value;
+            const confirmPassword = this.value;
+
+            if (confirmPassword && password !== confirmPassword) {
+                this.style.borderColor = '#ef4444';
+                this.nextElementSibling?.remove();
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'text-red-500 text-xs mt-1';
+                errorDiv.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i>Passwords do not match';
+                this.parentElement.appendChild(errorDiv);
+            } else {
+                this.style.borderColor = '';
+                this.nextElementSibling?.remove();
+            }
+        });
+
+        // Form validation on submit
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function(e) {
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                alert('Passwords do not match. Please check your password confirmation.');
+                confirmPasswordInput.focus();
+            }
+        });
+
+        // Auto-focus first field
+        document.addEventListener('DOMContentLoaded', () => {
+            const usernameField = document.getElementById('username');
+            if (usernameField) {
+                setTimeout(() => {
+                    usernameField.focus();
+                }, 500);
+            }
+        });
+
+        // Add input focus effects
+        document.querySelectorAll('.input-modern, select').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.classList.add('ring-2', 'ring-blue-200', 'dark:ring-blue-800', 'rounded-xl', 'p-1');
+            });
+
+            input.addEventListener('blur', function() {
+                this.parentElement.classList.remove('ring-2', 'ring-blue-200', 'dark:ring-blue-800', 'rounded-xl', 'p-1');
+            });
+        });
+    </script>
 </body>
 </html>
