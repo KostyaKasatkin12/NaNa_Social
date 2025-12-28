@@ -4,72 +4,504 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emotion & Gesture Detector - NaNa</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
         };
     </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --secondary: #8b5cf6;
+            --accent: #10b981;
+        }
+
+        .story-gradient {
+            background: linear-gradient(45deg, #8b5cf6, #3b82f6, #06b6d4);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--accent), #0ea5e9);
+            color: white;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .input-modern {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            background: white;
+            color: #1f2937;
+        }
+
+        .dark .input-modern {
+            border-color: #4b5563;
+            background: #374151;
+            color: #f9fafb;
+        }
+
+        .input-modern:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .post-card {
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .post-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .dark .post-card:hover {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .notification-dot {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+        }
+
+        .detection-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+            border: 2px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .dark .detection-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .gesture-indicator {
+            transition: all 0.3s ease;
+        }
+
+        .gesture-active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .emotion-indicator {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .emotion-happy { background: linear-gradient(135deg, #10b981, #34d399); color: white; }
+        .emotion-sad { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+        .emotion-angry { background: linear-gradient(135deg, #ef4444, #f97316); color: white; }
+        .emotion-surprise { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: white; }
+        .emotion-neutral { background: linear-gradient(135deg, #6b7280, #9ca3af); color: white; }
+
+        .speech-bubble {
+            position: relative;
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin: 16px 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .speech-bubble {
+            background: #374151;
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: white transparent transparent;
+        }
+
+        .dark .speech-bubble::after {
+            border-color: #374151 transparent transparent;
+        }
+
+        .video-container {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, transparent 70%, rgba(0, 0, 0, 0.7) 100%);
+            pointer-events: none;
+        }
+
+        .recording-indicator {
+            animation: recording-pulse 1.5s infinite;
+        }
+
+        @keyframes recording-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 min-h-screen font-poppins w-full h-full text-gray-800 dark:text-gray-200 transition-colors duration-300">
-    <div class="max-w-4xl mx-auto p-4 sm:p-6">
-        <header class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg mb-8 text-center">
-            <h1 class="text-3xl sm:text-4xl font-bold leading-relaxed">
-                Детектор эмоций, жестов и речи
-            </h1>
-            <p class="mt-2 text-lg">Покажите жест "FIST" (кулак) и подождите 5 секунд, чтобы сделать фото.</p>
-            <p class="mt-1 text-lg">Покажите знак Фиксиков (VICTORY), чтобы открыть профиль.</p>
-            <p class="mt-1 text-lg">Покажите жест "ROCK", чтобы открыть список друзей.</p>
-            <p class="mt-1 text-lg">Нажмите "Включить распознавание речи" и говорите - текст появится ниже.</p>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen font-poppins text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 rounded-2xl shadow-xl mb-8 text-center relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20"></div>
+            <div class="relative z-10">
+                <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-4">
+                    AI Emotion & Gesture Detector
+                </h1>
+                <p class="text-xl opacity-90">Advanced real-time detection on <span class="font-bold text-blue-200">NaNa</span></p>
+                <div class="mt-4 flex items-center justify-center gap-3">
+                    <i class="fas fa-robot text-blue-200"></i>
+                    <span class="text-blue-100">Powered by AI</span>
+                    <i class="fas fa-robot text-blue-200"></i>
+                </div>
+            </div>
         </header>
-        <main class="flex flex-col gap-6">
-            <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-md hover:shadow-lg transition text-center">
-                <video id="video" class="w-full max-w-2xl mx-auto rounded-lg border-2 border-gray-300 dark:border-gray-600" width="640" height="480" autoplay playsinline></video>
-                <div class="mt-4 text-lg space-y-2">
-                    <p><strong>Эмоция:</strong> <span id="emotion" class="text-blue-500 dark:text-blue-400">Ожидание...</span></p>
-                    <p><strong>Жест:</strong> <span id="gesture" class="text-blue-500 dark:text-blue-400">Ожидание...</span></p>
-                    <!-- Добавленный блок для распознанной речи -->
-                    <div class="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                        <p><strong>Распознанная речь:</strong></p>
-                        <div id="speech-result" class="min-h-20 p-3 mt-2 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-left">
-                            <span class="text-gray-500 dark:text-gray-400">Текст появится здесь когда вы начнёте говорить...</span>
+
+        <!-- Main Content Grid -->
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left Sidebar - Controls & Info -->
+            <div class="lg:col-span-4 space-y-6">
+                <!-- Instructions Card -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg post-card">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-white">
+                                <i class="fas fa-graduation-cap"></i>
+                            </div>
+                            How to Use
+                        </h3>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-3 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold">
+                                1
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-gray-200">Make a FIST</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Show "FIST" gesture for 5 seconds to take photo</p>
+                            </div>
                         </div>
-                        <div class="mt-3 flex justify-center gap-4">
-                            <button id="start-recognition" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
-                                <i class="fas fa-microphone mr-2"></i>Включить распознавание речи
-                            </button>
-                            <button id="stop-recognition" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition" disabled>
-                                <i class="fas fa-microphone-slash mr-2"></i>Выключить
-                            </button>
-                            <button id="clear-speech" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
-                                <i class="fas fa-eraser mr-2"></i>Очистить
-                            </button>
+
+                        <div class="flex items-start gap-3 p-3 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
+                                2
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-gray-200">Show VICTORY</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">"VICTORY" gesture opens your profile</p>
+                            </div>
                         </div>
-                        <div id="recognition-status" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                            Статус: Ожидание запуска
+
+                        <div class="flex items-start gap-3 p-3 rounded-xl bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-orange-500 to-yellow-500 flex items-center justify-center text-white text-sm font-bold">
+                                3
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-gray-200">ROCK Gesture</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">"ROCK" gesture opens friends list</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start gap-3 p-3 rounded-xl bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-900/20 dark:to-emerald-900/20">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 flex items-center justify-center text-white text-sm font-bold">
+                                4
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-gray-200">Voice Commands</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Enable speech recognition and speak</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <a href="{{ url_for('home') }}" id="back-home" class="mt-4 inline-block px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition">Вернуться на главную</a>
+
+                <!-- Current Status Card -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg post-card">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            Current Status
+                        </h3>
+                        <div id="camera-status" class="text-sm font-medium px-3 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300">
+                            <i class="fas fa-circle text-xs"></i> Camera Active
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="p-4 rounded-xl detection-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold text-gray-700 dark:text-gray-300">Emotion Detected:</span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400">Confidence</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span id="emotion" class="text-2xl font-bold text-gray-800 dark:text-gray-100">Neutral</span>
+                                <div class="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div id="emotion-confidence" class="h-full bg-gradient-to-r from-blue-500 to-purple-600" style="width: 50%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-xl detection-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold text-gray-700 dark:text-gray-300">Gesture Detected:</span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400">Active</span>
+                            </div>
+                            <div id="gesture" class="text-2xl font-bold text-center py-3 text-gray-800 dark:text-gray-100">
+                                Waiting...
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3 mt-6">
+                            <div class="gesture-indicator text-center p-3 rounded-xl bg-gray-100 dark:bg-gray-700" id="gesture-fist">
+                                <div class="text-2xl mb-2">✊</div>
+                                <span class="text-sm font-medium">FIST</span>
+                            </div>
+                            <div class="gesture-indicator text-center p-3 rounded-xl bg-gray-100 dark:bg-gray-700" id="gesture-victory">
+                                <div class="text-2xl mb-2">✌️</div>
+                                <span class="text-sm font-medium">VICTORY</span>
+                            </div>
+                            <div class="gesture-indicator text-center p-3 rounded-xl bg-gray-100 dark:bg-gray-700" id="gesture-rock">
+                                <div class="text-2xl mb-2">🤘</div>
+                                <span class="text-sm font-medium">ROCK</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Detection Area -->
+            <div class="lg:col-span-8 space-y-6">
+                <!-- Video Stream Card -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl post-card">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-2xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-pink-600 flex items-center justify-center text-white">
+                                <i class="fas fa-video"></i>
+                            </div>
+                            Live Detection Feed
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <div class="recording-indicator w-3 h-3 rounded-full bg-red-500"></div>
+                            <span class="text-sm font-semibold text-red-600 dark:text-red-400">LIVE</span>
+                        </div>
+                    </div>
+
+                    <div class="video-container">
+                        <video id="video" class="w-full h-auto rounded-lg" width="640" height="480" autoplay playsinline></video>
+                        <div class="video-overlay"></div>
+                        <div class="absolute bottom-4 left-4 text-white">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-user-circle"></i>
+                                <span class="font-semibold">Real-time Analysis</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 grid grid-cols-2 gap-4">
+                        <div class="text-center p-4 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
+                            <div class="text-4xl mb-2">📸</div>
+                            <h4 class="font-bold text-gray-800 dark:text-gray-200">Photo Capture</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Show FIST gesture</p>
+                        </div>
+                        <div class="text-center p-4 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+                            <div class="text-4xl mb-2">🎤</div>
+                            <h4 class="font-bold text-gray-800 dark:text-gray-200">Voice Control</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Enable below</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Speech Recognition Card -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl post-card">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-2xl font-bold flex items-center gap-3 text-gray-800 dark:text-gray-100">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 flex items-center justify-center text-white">
+                                <i class="fas fa-microphone"></i>
+                            </div>
+                            Speech Recognition
+                        </h3>
+                        <div id="recognition-status" class="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                            <i class="fas fa-clock mr-1"></i> Waiting
+                        </div>
+                    </div>
+
+                    <div class="speech-bubble">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center justify-center text-white text-sm">
+                                AI
+                            </div>
+                            <span class="font-semibold text-gray-700 dark:text-gray-300">Speech Output</span>
+                        </div>
+                        <div id="speech-result" class="min-h-20 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-gray-700 dark:text-gray-300">
+                            <span class="text-gray-400 dark:text-gray-500">Text will appear here when you start speaking...</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3 mt-6">
+                        <button id="start-recognition"
+                                class="btn-primary flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-semibold">
+                            <i class="fas fa-microphone"></i>
+                            Enable Speech Recognition
+                        </button>
+                        <button id="stop-recognition"
+                                class="flex-1 py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:border-gray-400 dark:hover:border-gray-500 transition flex items-center justify-center gap-2"
+                                disabled>
+                            <i class="fas fa-microphone-slash"></i>
+                            Disable
+                        </button>
+                        <button id="clear-speech"
+                                class="flex-1 py-3 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:from-gray-200 hover:to-gray-300 dark:hover:from-gray-600 dark:hover:to-gray-500 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-eraser"></i>
+                            Clear
+                        </button>
+                    </div>
+
+                    <div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Speak clearly for better recognition results
+                    </div>
+                </div>
             </div>
         </main>
-        <div id="spidermanDialog" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg max-w-sm w-full">
-                <p id="spidermanMessage" class="text-lg mb-4"></p>
-                <div class="flex justify-around">
-                    <button id="spidermanYes" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">Да</button>
-                    <button id="spidermanNo" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Нет</button>
+
+        <!-- Quick Actions -->
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <a href="{{ url_for('home') }}"
+               class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg post-card hover:shadow-xl transition group text-center">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 mx-auto mb-4 flex items-center justify-center text-white text-2xl">
+                    <i class="fas fa-home"></i>
                 </div>
+                <h4 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Back to Home</h4>
+                <p class="text-gray-600 dark:text-gray-400">Return to main feed</p>
+            </a>
+
+            <a href="{{ url_for('profile') }}"
+               class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg post-card hover:shadow-xl transition group text-center">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 mx-auto mb-4 flex items-center justify-center text-white text-2xl">
+                    <i class="fas fa-user"></i>
+                </div>
+                <h4 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Your Profile</h4>
+                <p class="text-gray-600 dark:text-gray-400">Edit profile settings</p>
+            </a>
+
+            <a href="{{ url_for('face_chat') }}"
+               class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg post-card hover:shadow-xl transition group text-center">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-r from-orange-500 to-yellow-500 mx-auto mb-4 flex items-center justify-center text-white text-2xl">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h4 class="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Friends List</h4>
+                <p class="text-gray-600 dark:text-gray-400">View all friends</p>
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                        N
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800 dark:text-gray-200">NaNa AI Detection System</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">© 2025 • Advanced AI Technology</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-6">
+                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-crown text-yellow-500 mr-1"></i>
+                        CEO: Kasatkin K.
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Spiderman Dialog Modal -->
+    <div id="spidermanDialog" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            <div class="flex items-center justify-center mb-6">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-r from-red-500 to-blue-500 flex items-center justify-center text-white text-2xl">
+                    <i class="fas fa-spider"></i>
+                </div>
+            </div>
+            <h3 class="text-2xl font-bold text-center text-gray-800 dark:text-gray-100 mb-4">Spider-sense Alert!</h3>
+            <p id="spidermanMessage" class="text-center text-gray-600 dark:text-gray-400 mb-6"></p>
+            <div class="flex gap-4">
+                <button id="spidermanYes"
+                        class="flex-1 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold hover:shadow transition">
+                    Yes, Continue
+                </button>
+                <button id="spidermanNo"
+                        class="flex-1 py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:border-gray-400 dark:hover:border-gray-500 transition">
+                    Cancel
+                </button>
             </div>
         </div>
     </div>
+
     <script>
         const socket = io();
         const video = document.getElementById('video');
         const emotionText = document.getElementById('emotion');
+        const emotionConfidence = document.getElementById('emotion-confidence');
         const gestureText = document.getElementById('gesture');
         const speechResult = document.getElementById('speech-result');
         const startBtn = document.getElementById('start-recognition');
@@ -80,6 +512,12 @@
         const spidermanMessage = document.getElementById('spidermanMessage');
         const spidermanYes = document.getElementById('spidermanYes');
         const spidermanNo = document.getElementById('spidermanNo');
+        const cameraStatus = document.getElementById('camera-status');
+
+        // Gesture indicators
+        const gestureFist = document.getElementById('gesture-fist');
+        const gestureVictory = document.getElementById('gesture-victory');
+        const gestureRock = document.getElementById('gesture-rock');
 
         let stream = null;
         let frameInterval = null;
@@ -87,12 +525,44 @@
         let isRecognizing = false;
         let finalTranscript = '';
 
+        function updateEmotionDisplay(emotionName, confidence) {
+            emotionText.textContent = emotionName;
+            emotionConfidence.style.width = `${confidence * 100}%`;
+
+            // Add emotion class
+            emotionText.className = 'text-2xl font-bold emotion-indicator';
+            emotionText.classList.add(`emotion-${emotionName.toLowerCase()}`);
+        }
+
+        function updateGestureDisplay(gesture) {
+            gestureText.textContent = gesture;
+
+            // Reset all gesture indicators
+            [gestureFist, gestureVictory, gestureRock].forEach(el => {
+                el.classList.remove('gesture-active');
+                el.classList.add('bg-gray-100', 'dark:bg-gray-700');
+            });
+
+            // Activate current gesture
+            if (gesture === 'FIST') {
+                gestureFist.classList.add('gesture-active');
+                gestureFist.classList.remove('bg-gray-100', 'dark:bg-gray-700');
+            } else if (gesture === 'VICTORY') {
+                gestureVictory.classList.add('gesture-active');
+                gestureVictory.classList.remove('bg-gray-100', 'dark:bg-gray-700');
+            } else if (gesture === 'ROCK') {
+                gestureRock.classList.add('gesture-active');
+                gestureRock.classList.remove('bg-gray-100', 'dark:bg-gray-700');
+            }
+        }
+
         // Проверка поддержки Web Speech API
         function checkSpeechRecognitionSupport() {
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                statusText.textContent = 'Статус: Ваш браузер не поддерживает распознавание речи';
+                statusText.textContent = 'Browser not supported';
+                statusText.className = 'text-sm font-medium px-3 py-1 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300';
                 startBtn.disabled = true;
-                startBtn.textContent = 'Браузер не поддерживается';
+                startBtn.innerHTML = '<i class="fas fa-times-circle"></i> Browser Not Supported';
                 return false;
             }
             return true;
@@ -109,10 +579,11 @@
 
             recognition.onstart = function() {
                 isRecognizing = true;
-                statusText.textContent = 'Статус: Слушаю... Говорите';
+                statusText.textContent = 'Listening...';
+                statusText.className = 'text-sm font-medium px-3 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300';
                 startBtn.disabled = true;
                 stopBtn.disabled = false;
-                speechResult.innerHTML = '<span class="text-green-500">Слушаю... Начинайте говорить</span>';
+                speechResult.innerHTML = '<span class="text-green-500">Listening... Start speaking</span>';
             };
 
             recognition.onresult = function(event) {
@@ -133,7 +604,7 @@
                     displayText += '<span class="text-gray-500">' + interimTranscript + '</span>';
                 }
 
-                speechResult.innerHTML = displayText || '<span class="text-gray-500">Речь не распознана</span>';
+                speechResult.innerHTML = displayText || '<span class="text-gray-500">Speech not recognized</span>';
 
                 // Прокрутка к новому тексту
                 speechResult.scrollTop = speechResult.scrollHeight;
@@ -141,9 +612,10 @@
 
             recognition.onerror = function(event) {
                 console.error('Speech recognition error:', event.error);
-                statusText.textContent = 'Статус: Ошибка - ' + event.error;
+                statusText.textContent = 'Error: ' + event.error;
+                statusText.className = 'text-sm font-medium px-3 py-1 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300';
                 if (event.error === 'not-allowed') {
-                    speechResult.innerHTML = '<span class="text-red-500">Разрешите доступ к микрофону</span>';
+                    speechResult.innerHTML = '<span class="text-red-500">Microphone access denied</span>';
                 }
                 stopRecognition();
             };
@@ -166,7 +638,8 @@
                 finalTranscript = '';
             } catch (error) {
                 console.error('Error starting recognition:', error);
-                statusText.textContent = 'Статус: Ошибка запуска';
+                statusText.textContent = 'Start error';
+                statusText.className = 'text-sm font-medium px-3 py-1 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300';
             }
         }
 
@@ -174,7 +647,8 @@
             if (recognition) {
                 isRecognizing = false;
                 recognition.stop();
-                statusText.textContent = 'Статус: Остановлено';
+                statusText.textContent = 'Stopped';
+                statusText.className = 'text-sm font-medium px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
                 startBtn.disabled = false;
                 stopBtn.disabled = true;
             }
@@ -182,7 +656,7 @@
 
         function clearSpeechText() {
             finalTranscript = '';
-            speechResult.innerHTML = '<span class="text-gray-500 dark:text-gray-400">Текст очищен</span>';
+            speechResult.innerHTML = '<span class="text-gray-400 dark:text-gray-500">Text cleared</span>';
         }
 
         function logWithTimestamp(message) {
@@ -196,10 +670,14 @@
                     video.srcObject = stream;
                     startFrameCapture();
                     logWithTimestamp('Camera started successfully');
+                    cameraStatus.innerHTML = '<i class="fas fa-circle text-xs"></i> Camera Active';
+                    cameraStatus.className = 'text-sm font-medium px-3 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300';
                 })
                 .catch(err => {
                     logWithTimestamp(`Camera access error: ${err.name} - ${err.message}`);
-                    alert('Ошибка доступа к камере: ' + err.message);
+                    cameraStatus.innerHTML = '<i class="fas fa-circle text-xs"></i> Camera Error';
+                    cameraStatus.className = 'text-sm font-medium px-3 py-1 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300';
+                    alert('Camera access error: ' + err.message);
                 });
         }
 
@@ -256,12 +734,12 @@
 
         socket.on('connect_error', (error) => {
             logWithTimestamp(`SocketIO connection error: ${error}`);
-            alert('Ошибка подключения к SocketIO: ' + error);
+            alert('SocketIO connection error: ' + error);
         });
 
         socket.on('error', (data) => {
             logWithTimestamp(`Server error: ${data.error}`);
-            alert('Ошибка сервера: ' + data.error);
+            alert('Server error: ' + data.error);
         });
 
         socket.on('response', (data) => {
@@ -270,14 +748,27 @@
                 logWithTimestamp(`Response error: ${data.error}`);
                 return;
             }
-            emotionText.textContent = data.emotion ? `${data.emotion.name} (${(data.emotion.score * 100).toFixed(1)}%)` : 'Не распознано';
-            gestureText.textContent = data.gesture || 'Не распознано';
+
+            // Update emotion display
+            if (data.emotion) {
+                updateEmotionDisplay(data.emotion.name, data.emotion.score);
+            } else {
+                updateEmotionDisplay('neutral', 0.5);
+            }
+
+            // Update gesture display
+            if (data.gesture) {
+                updateGestureDisplay(data.gesture);
+            } else {
+                updateGestureDisplay('Waiting...');
+            }
+
             if (data.gesture === 'FIST' && data.photo) {
                 logWithTimestamp(`FIST gesture detected with photo: ${data.photo}`);
                 // Используем распознанный текст как предложение для поста
                 let postText = finalTranscript.trim();
                 if (!postText) {
-                    postText = prompt('Введите текст для поста (или используйте распознанную речь):');
+                    postText = prompt('Enter text for post (or use recognized speech):');
                 }
                 if (postText !== null) {
                     stopCamera();
@@ -316,14 +807,9 @@
             spidermanDialog.classList.add('hidden');
         });
 
-        document.getElementById('back-home').addEventListener('click', (e) => {
-            e.preventDefault();
-            logWithTimestamp('Back to home clicked');
-            stopCamera();
-            window.location.href = '{{ url_for("home") }}';
-        });
-
         window.addEventListener('beforeunload', stopCamera);
+
+        // Add audio recording functionality if needed
         function sendAudioToServer(audioBlob) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -342,69 +828,6 @@
             });
         }
 
-        // Обновите функцию startRecognition для отправки данных на сервер
-        function startRecognition() {
-            if (!recognition) {
-                initializeSpeechRecognition();
-            }
-
-            // Создаем MediaRecorder для записи аудио
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(function(stream) {
-                    const mediaRecorder = new MediaRecorder(stream);
-                    const audioChunks = [];
-
-                    mediaRecorder.ondataavailable = function(event) {
-                        audioChunks.push(event.data);
-                    };
-
-                    mediaRecorder.onstop = function() {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                        // Отправляем на сервер
-                        sendAudioToServer(audioBlob)
-                            .then(serverText => {
-                                console.log('Server recognition:', serverText);
-                                // Можно сравнить с клиентским распознаванием
-                            })
-                            .catch(error => {
-                                console.error('Server recognition error:', error);
-                            });
-                    };
-
-                    mediaRecorder.start();
-
-                    // Останавливаем запись когда останавливаем распознавание
-                    window.currentMediaRecorder = mediaRecorder;
-                })
-                .catch(function(err) {
-                    console.error('Error accessing microphone:', err);
-                });
-
-            try {
-                recognition.start();
-                finalTranscript = '';
-            } catch (error) {
-                console.error('Error starting recognition:', error);
-                statusText.textContent = 'Статус: Ошибка запуска';
-            }
-        }
-
-        function stopRecognition() {
-            if (recognition) {
-                isRecognizing = false;
-                recognition.stop();
-
-                // Останавливаем запись аудио
-                if (window.currentMediaRecorder && window.currentMediaRecorder.state !== 'inactive') {
-                    window.currentMediaRecorder.stop();
-                }
-
-                statusText.textContent = 'Статус: Остановлено';
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-            }
-        }
-
         // Добавьте обработчик для ответов от сервера
         socket.on('speech_result', function(data) {
             if (data.error) {
@@ -414,13 +837,15 @@
 
             if (data.success) {
                 // Добавляем серверный результат с пометкой
-                const serverText = `[Сервер] ${data.text}`;
+                const serverText = `[Server] ${data.text}`;
                 speechResult.innerHTML += `<div class="mt-2 p-2 bg-blue-50 dark:bg-blue-900 rounded">${serverText}</div>`;
                 speechResult.scrollTop = speechResult.scrollHeight;
             }
         });
+
+        // Initialize with default values
+        updateEmotionDisplay('neutral', 0.5);
+        updateGestureDisplay('Waiting...');
     </script>
 </body>
 </html>
-
-
