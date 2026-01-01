@@ -756,48 +756,295 @@
     </div>
 
     <script>
-        const socket = io.connect(window.location.origin);
+        // Инициализация WebSocket соединения
+        const socket = io.connect(window.location.origin, {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000
+        });
+
         const userId = {{ session['user_id'] | tojson }};
+        let notificationSound = null;
+        let isNotificationPermissionGranted = false;
 
-        socket.on('connect', () => {
-            console.log('Connected to SocketIO server');
-            socket.emit('join_room', userId);
-            console.log(`Joined user room: ${userId}`);
-        });
+        // Инициализация звука уведомления
+        function initNotificationSound() {
+            notificationSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
+            notificationSound.volume = 0.3;
+        }
 
-        socket.on('connect_error', (error) => {
-            console.error('SocketIO connection error:', error);
-        });
+        // Запрос разрешения на уведомления
+        function requestNotificationPermission() {
+            if ('Notification' in window) {
+                if (Notification.permission === 'default') {
+                    Notification.requestPermission().then(permission => {
+                        isNotificationPermissionGranted = permission === 'granted';
+                        if (isNotificationPermissionGranted) {
+                            console.log('Notification permission granted');
+                        }
+                    });
+                } else {
+                    isNotificationPermissionGranted = Notification.permission === 'granted';
+                }
+            }
+        }
 
-        socket.on('update_notifications', function(data) {
-            if (data.user_id !== userId) return;
-            console.log('Received update_notifications:', data);
+        // Показать браузерное уведомление
+        function showBrowserNotification(title, body) {
+            if (isNotificationPermissionGranted) {
+                try {
+                    const notification = new Notification(title, {
+                        body: body,
+                        icon: '/static/favicon.ico',
+                        badge: '/static/favicon.ico',
+                        tag: 'nana-notification'
+                    });
+
+                    notification.onclick = function() {
+                        window.focus();
+                        notification.close();
+                    };
+
+                    setTimeout(notification.close.bind(notification), 5000);
+                } catch (e) {
+                    console.log('Browser notification error:', e);
+                }
+            }
+        }
+
+        // Воспроизвести звук уведомления
+        function playNotificationSound() {
+            if (notificationSound) {
+                try {
+                    notificationSound.currentTime = 0;
+                    notificationSound.play().catch(e => console.log('Audio play failed:', e));
+                } catch (e) {
+                    console.log('Sound play error:', e);
+                }
+            }
+        }
+
+        // Анимация появления уведомления
+        function animateNotification() {
+            const badge = document.querySelector('.notification-dot');
+            if (badge) {
+                badge.style.animation = 'none';
+                setTimeout(() => {
+                    badge.style.animation = 'pulse 1.5s infinite';
+                }, 10);
+            }
+        }
+
+        // Обновить бейдж уведомлений в заголовке вкладки
+        function updateTabBadge(count) {
+            if (count > 0) {
+                document.title = `(${count}) NaNa`;
+            } else {
+                document.title = 'NaNa';
+            }
+        }
+
+        // Показать всплывающее уведомление на странице
+        function showToastNotification(content) {
+            // Создаем элемент тоста
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 z-50 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-xl shadow-xl max-w-sm transform translate-x-full transition-transform duration-300';
+            toast.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <i class="fas fa-bell text-white"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium">Новое уведомление</p>
+                        <p class="text-sm opacity-90 mt-1">${content}</p>
+                        <p class="text-xs opacity-70 mt-2">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                    </div>
+                    <button class="text-white/70 hover:text-white" onclick="this.parentElement.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+
+            // Добавляем в DOM
+            document.body.appendChild(toast);
+
+            // Анимация появления
+            setTimeout(() => {
+                toast.style.transform = 'translateX(0)';
+            }, 10);
+
+            // Автоматическое скрытие через 5 секунд
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.transform = 'translateX(100%)';
+                    setTimeout(() => {
+                        if (toast.parentElement) {
+                            toast.remove();
+                        }
+                    }, 300);
+                }
+            }, 5000);
+        }
+
+        // Обновить список уведомлений
+        function updateNotificationsList(notifications) {
             const notificationsList = document.getElementById('notifications-list');
+            if (!notificationsList) return;
+
             notificationsList.innerHTML = '';
-            if (data.notifications && data.notifications.length > 0) {
-                data.notifications.forEach(notification => {
+
+            if (notifications && notifications.length > 0) {
+                notifications.forEach(notification => {
                     const li = document.createElement('li');
-                    li.className = 'p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition';
-                    const content = notification[0];
-                    const created_at = notification[1] ? ` <span class="text-gray-500 dark:text-gray-400">(${notification[1]})</span>` : '';
-                    li.innerHTML = content + created_at;
+                    li.className = 'p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer';
+
+                    const content = notification.content || notification[0];
+                    const created_at = notification.created_at || notification[1];
+                    const type = notification.type || 'system';
+
+                    const timeStr = created_at ?
+                        ` <span class="text-xs text-gray-500 dark:text-gray-400">(${new Date(created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})</span>` : '';
+
+                    li.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full ${getNotificationColor(type)} flex items-center justify-center text-white">
+                                <i class="fas ${getNotificationIcon(type)} text-xs"></i>
+                            </div>
+                            <div class="flex-1">
+                                <span class="text-sm">${content}</span>
+                                ${timeStr}
+                            </div>
+                        </div>
+                    `;
+
                     notificationsList.appendChild(li);
                 });
             } else {
                 const li = document.createElement('li');
-                li.className = 'p-3 text-gray-500 dark:text-gray-400 italic';
-                li.textContent = 'No new notifications';
+                li.className = 'p-3 text-gray-500 dark:text-gray-400 italic text-center';
+                li.textContent = 'Нет новых уведомлений';
                 notificationsList.appendChild(li);
+            }
+        }
+
+        // Получить цвет для типа уведомления
+        function getNotificationColor(type) {
+            const colors = {
+                'message': 'bg-gradient-to-r from-cyan-500 to-blue-500',
+                'friend_request': 'bg-gradient-to-r from-green-500 to-emerald-500',
+                'like': 'bg-gradient-to-r from-pink-500 to-rose-500',
+                'comment': 'bg-gradient-to-r from-purple-500 to-indigo-500',
+                'friend_accept': 'bg-gradient-to-r from-yellow-500 to-orange-500',
+                'system': 'bg-gradient-to-r from-gray-500 to-gray-700'
+            };
+            return colors[type] || colors['system'];
+        }
+
+        // Получить иконку для типа уведомления
+        function getNotificationIcon(type) {
+            const icons = {
+                'message': 'fa-comment',
+                'friend_request': 'fa-user-plus',
+                'like': 'fa-heart',
+                'comment': 'fa-comment-alt',
+                'friend_accept': 'fa-user-check',
+                'system': 'fa-bell'
+            };
+            return icons[type] || 'fa-bell';
+        }
+
+        // Обновить количество уведомлений в бейдже
+        function updateNotificationBadge(count) {
+            const badge = document.querySelector('.notification-dot');
+            if (badge) {
+                badge.textContent = count > 0 ? count : '';
+                badge.style.display = count > 0 ? 'flex' : 'none';
+            }
+
+            // Также обновляем в заголовке вкладки
+            updateTabBadge(count);
+        }
+
+        // Обработчики WebSocket событий
+        socket.on('connect', () => {
+            console.log('Connected to WebSocket server');
+            socket.emit('join_room', userId);
+            socket.emit('user_online');
+
+            // Запрашиваем уведомления сразу после подключения
+            fetch('/api/notifications/latest')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.notifications) {
+                        updateNotificationsList(data.notifications);
+                        updateNotificationBadge(data.unread_count);
+                    }
+                })
+                .catch(console.error);
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('WebSocket connection error:', error);
+            // Показываем уведомление о потере соединения
+            showToastNotification('Потеряно соединение с сервером. Пытаемся переподключиться...');
+        });
+
+        socket.on('reconnect', () => {
+            console.log('Reconnected to WebSocket server');
+            showToastNotification('Соединение восстановлено');
+        });
+
+        // Основное событие для обновления уведомлений
+        socket.on('update_notifications', function(data) {
+            if (data.user_id != userId) return;
+
+            console.log('Real-time notification update:', data);
+
+            // Обновляем интерфейс
+            if (data.notifications) {
+                updateNotificationsList(data.notifications);
+            }
+
+            if (data.unread_count !== undefined) {
+                updateNotificationBadge(data.unread_count);
+            }
+
+            // Показываем визуальные эффекты для новых уведомлений
+            if (data.notifications && data.notifications.length > 0) {
+                const latestNotification = data.notifications[0];
+                showToastNotification(latestNotification.content);
+                playNotificationSound();
+                animateNotification();
+
+                // Браузерное уведомление
+                showBrowserNotification('NaNa', latestNotification.content);
             }
         });
 
+        // Специфичные события для разных типов уведомлений
+        socket.on('new_friend_request', function(data) {
+            if (data.sender_id != userId) {
+                showToastNotification(`Новая заявка в друзья от ${data.sender_username}`);
+                playNotificationSound();
+            }
+        });
+
+        socket.on('friend_request_accepted', function(data) {
+            showToastNotification(`${data.friend_username} принял(а) вашу заявку в друзья`);
+            playNotificationSound();
+        });
+
         socket.on('new_message', function(data) {
-            if (data.sender_id !== userId) {
-                console.log('New message received:', data);
+            if (data.sender_id != userId) {
+                showToastNotification(`Новое сообщение от ${data.username}`);
+                playNotificationSound();
+
+                // Обновляем счетчик непрочитанных в чатах
                 const chatsList = document.getElementById('chats-list');
                 const chatItem = chatsList.querySelector(`[data-chat-id="${data.chat_id}"]`);
                 if (chatItem) {
-                    const unreadSpan = chatItem.querySelector('span');
+                    const unreadSpan = chatItem.querySelector('.absolute span');
                     let unreadCount = unreadSpan ? parseInt(unreadSpan.textContent) + 1 : 1;
                     if (unreadSpan) {
                         unreadSpan.textContent = unreadCount;
@@ -811,76 +1058,34 @@
             }
         });
 
-        document.getElementById('clear-notifications').addEventListener('click', () => {
-            const csrfToken = document.querySelector('#notifications-form input[name="csrf_token"]').value;
-            fetch('/clear_notifications', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken
+        socket.on('post_reaction_updated', function(data) {
+            // Обновляем UI реакции
+            const post = document.querySelector(`.post-card[data-post-id="${data.post_id}"]`);
+            if (post) {
+                const likeButton = post.querySelector('.like-btn');
+                const dislikeButton = post.querySelector('.dislike-btn');
+                const likeSpan = post.querySelector('.like-count');
+                const dislikeSpan = post.querySelector('.dislike-count');
+
+                if (likeButton && dislikeButton && likeSpan && dislikeSpan) {
+                    likeButton.textContent = data.user_reaction === 'like' ? 'Unlike' : 'Like';
+                    dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Undislike' : 'Dislike';
+                    likeSpan.textContent = `${data.likes} likes`;
+                    dislikeSpan.textContent = `${data.dislikes} dislikes`;
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    console.log('Notifications cleared');
-                    const notificationsList = document.getElementById('notifications-list');
-                    notificationsList.innerHTML = '<li class="p-3 text-gray-500 dark:text-gray-400 italic">No new notifications</li>';
-                } else {
-                    console.error('Failed to clear notifications:', data.message);
-                    alert('Failed to clear notifications: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error clearing notifications:', error);
-                alert('Error clearing notifications. Please try again.');
-            });
-        });
-
-        socket.on('new_friend_request', function(data) {
-            if (data.sender_id !== userId) {
-                const friendRequests = document.querySelector('.friend-requests');
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-3 border-b border-gray-200 dark:border-gray-700';
-                li.dataset.senderId = data.sender_id;
-                li.innerHTML = `
-                    <span class="font-medium text-gray-700 dark:text-gray-300">${data.sender_username}</span>
-                    <div class="flex gap-2">
-                        <form action="/accept_friend/${data.sender_id}" method="POST" class="inline">
-                            <input type="hidden" name="csrf_token" value="${document.querySelector('#notifications-form input[name="csrf_token"]').value}">
-                            <button type="submit" class="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 hover:scale-105 transition min-h-12">Accept</button>
-                        </form>
-                        <form action="/reject_friend/${data.sender_id}" method="POST" class="inline">
-                            <input type="hidden" name="csrf_token" value="${document.querySelector('#notifications-form input[name="csrf_token"]').value}">
-                            <button type="submit" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 hover:scale-105 transition min-h-12">Reject</button>
-                        </form>
-                    </div>
-                `;
-                friendRequests.appendChild(li);
             }
         });
 
-        socket.on('friend_request_accepted', function(data) {
-            if (data.friend_id !== userId) {
-                const friendList = document.querySelector('.friend-list');
-                const li = document.createElement('li');
-                li.className = 'flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition';
-                li.innerHTML = `
-                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                        <i class="fas fa-user text-blue-500 dark:text-blue-400"></i>
-                    </div>
-                    <a href="/create_chat/${data.friend_id}" class="text-blue-500 dark:text-blue-400 hover:underline font-medium">${data.friend_username}</a>
-                `;
-                friendList.appendChild(li);
-                const requestLi = document.querySelector(`.friend-requests li[data-sender-id="${data.friend_id}"]`);
-                if (requestLi) requestLi.remove();
+        socket.on('new_story', function(data) {
+            if (data.user_id != userId) {
+                showToastNotification(`Новая история от ${data.username}`);
+                playNotificationSound();
             }
         });
 
-        socket.on('friend_request_rejected', function(data) {
-            if (data.friend_id !== userId) {
-                const requestLi = document.querySelector(`.friend-requests li[data-sender-id="${data.friend_id}"]`);
-                if (requestLi) requestLi.remove();
-            }
+        socket.on('online_status', function(data) {
+            // Показать статус онлайн/оффлайн друзей
+            console.log('Online status update:', data);
         });
 
         socket.on('new_post', function(data) {
@@ -888,7 +1093,7 @@
             const postDiv = document.createElement('div');
             postDiv.className = 'bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 post-card';
             postDiv.dataset.postId = data.id;
-            const emotion = data.emotion ? ` <span class="text-blue-500 dark:text-blue-400"> | Эмоция: ${data.emotion}</span>` : '';
+            const emotion = data.emotion ? ` <span class="px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-pink-100 to-rose-100 dark:from-pink-900/30 dark:to-rose-900/30 text-pink-600 dark:text-pink-400">${data.emotion}</span>` : '';
             postDiv.innerHTML = `
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3">
@@ -908,7 +1113,7 @@
                 <p class="text-gray-800 dark:text-gray-200 mb-4 leading-relaxed">${data.content}</p>
 
                 ${data.image ? `<div class="rounded-xl overflow-hidden mb-4 border border-gray-200 dark:border-gray-700">
-                    <img src="${data.image}" alt="Post image" class="w-full h-auto">
+                    <img src="/static/avatars/${data.image}" alt="Post image" class="w-full h-auto">
                 </div>` : ''}
 
                 <div class="flex gap-6 mt-4 items-center">
@@ -934,52 +1139,138 @@
             attachReactionListeners();
         });
 
-        socket.on('post_reaction_updated', function(data) {
-            const post = document.querySelector(`.post-card[data-post-id="${data.post_id}"]`);
-            if (post) {
-                const likeButton = post.querySelector('.like-btn');
-                const dislikeButton = post.querySelector('.dislike-btn');
-                const likeSpan = post.querySelector('.like-count');
-                const dislikeSpan = post.querySelector('.dislike-count');
-                likeButton.textContent = data.user_reaction === 'like' ? 'Unlike' : 'Like';
-                dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Undislike' : 'Dislike';
-                likeSpan.textContent = `${data.likes} likes`;
-                dislikeSpan.textContent = `${data.dislikes} dislikes`;
-            }
+        // Периодическая проверка новых уведомлений (фолбэк если WebSocket отключился)
+        function pollNotifications() {
+            setInterval(() => {
+                fetch('/api/notifications/check')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.has_new) {
+                            // Запрашиваем полный список уведомлений
+                            fetch('/api/notifications/latest')
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.notifications) {
+                                        updateNotificationsList(data.notifications);
+                                        updateNotificationBadge(data.unread_count);
+
+                                        // Показываем тост только для самого нового уведомления
+                                        if (data.notifications && data.notifications.length > 0) {
+                                            showToastNotification(data.notifications[0][0]);
+                                            playNotificationSound();
+                                        }
+                                    }
+                                });
+                        }
+                    })
+                    .catch(console.error);
+            }, 30000); // Проверка каждые 30 секунд
+        }
+
+        // Очистка уведомлений
+        document.getElementById('clear-notifications')?.addEventListener('click', () => {
+            const csrfToken = document.querySelector('#notifications-form input[name="csrf_token"]').value;
+
+            fetch('/clear_notifications', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    updateNotificationsList([]);
+                    updateNotificationBadge(0);
+                    showToastNotification('Все уведомления очищены');
+                } else {
+                    showToastNotification('Ошибка при очистке уведомлений');
+                }
+            })
+            .catch(error => {
+                console.error('Error clearing notifications:', error);
+                showToastNotification('Ошибка соединения');
+            });
         });
 
-        socket.on('new_story', function(data) {
-            if (data.user_id !== userId) {
-                const storiesContainer = document.querySelector('.stories-container');
-                const storyDiv = document.createElement('div');
-                storyDiv.className = 'flex flex-col items-center flex-shrink-0';
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            initNotificationSound();
+            requestNotificationPermission();
 
-                const ext = data.image ? data.image.split('.').pop().toLowerCase() : '';
-                const mediaHTML = data.image ?
-                    (['mp4', 'mov', 'avi'].includes(ext) ?
-                        `<video src="{{ url_for('serve_story_file', filename='') }}${data.image}" class="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800"></video>` :
-                        `<img src="{{ url_for('serve_story_file', filename='') }}${data.image}" alt="Story" class="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800">`) :
-                    `<div class="w-20 h-20 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 border-4 border-white dark:border-gray-800 flex items-center justify-center">
-                        <i class="fas fa-feather text-gray-400 dark:text-gray-500 text-xl"></i>
-                    </div>`;
+            // Начинаем периодическую проверку (как фолбэк)
+            pollNotifications();
 
-                storyDiv.innerHTML = `
-                    <div class="story-circle mb-3">
-                        <div class="story-inner">
-                            ${mediaHTML}
-                        </div>
-                    </div>
-                    <p class="text-sm text-center font-medium text-gray-700 dark:text-gray-300 truncate max-w-[100px] mb-2">
-                        ${data.content || 'Story'}
-                    </p>
-                    <button onclick="viewStory(${data.story_id})" class="story-view-btn">
-                        <i class="fas fa-eye mr-1"></i> View
-                    </button>
-                `;
-                storiesContainer.appendChild(storyDiv);
-            }
+            // Проверяем фокус окна для показа уведомлений
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    // Когда пользователь вернулся на вкладку
+                    updateTabBadge(0);
+                    document.title = 'NaNa';
+                }
+            });
+
+            // Обработка клика по уведомлениям
+            document.getElementById('notifications-list')?.addEventListener('click', (e) => {
+                const listItem = e.target.closest('li');
+                if (listItem) {
+                    const text = listItem.textContent;
+                    if (text.includes('message') || text.includes('сообщение')) {
+                        // Если уведомление о сообщении, переходим в чаты
+                        const chatsLink = document.querySelector('a[href*="/chat"]');
+                        if (chatsLink) {
+                            window.location.href = chatsLink.href;
+                        }
+                    }
+                }
+            });
         });
 
+        // Обработка отключения
+        window.addEventListener('beforeunload', () => {
+            socket.emit('user_offline');
+        });
+
+        // Добавить этот CSS для анимаций
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+                100% { transform: scale(1); }
+            }
+
+            .notification-toast {
+                animation: slideIn 0.3s ease-out;
+            }
+
+            .notification-toast.hiding {
+                animation: slideOut 0.3s ease-in;
+            }
+
+            .notification-pulse {
+                animation: pulse 0.5s ease-in-out 3;
+            }
+
+            /* Стиль для новых уведомлений */
+            .new-notification {
+                border-left: 4px solid #3b82f6;
+                background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), transparent);
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Остальной код (для постов, комментариев и т.д.)
         function attachReactionListeners() {
             document.querySelectorAll('.like-btn').forEach(button => {
                 button.removeEventListener('click', handleLikeClick);
@@ -1069,7 +1360,7 @@
             document.getElementById('storyModal').classList.add('hidden');
         }
 
-        document.getElementById('aiEnhanceBtn').addEventListener('click', () => {
+        document.getElementById('aiEnhanceBtn')?.addEventListener('click', () => {
             const content = document.getElementById('postContent').value.trim();
             if (!content) {
                 alert('Please enter some text to enhance.');
@@ -1352,7 +1643,7 @@
                             <div class="p-3 bg-gray-50 dark:bg-gray-700 flex justify-between items-center">
                                 <span class="text-sm text-gray-600 dark:text-gray-300">${file.name}</span>
                                 <button type="button" onclick="this.parentElement.parentElement.remove()"
-                                        class="text-red-500 hover:text-red-700">
+                                        class="text-red500 hover:text-red-700">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
