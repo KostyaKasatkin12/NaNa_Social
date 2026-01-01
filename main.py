@@ -1,10 +1,13 @@
 import eventlet
+
 eventlet.monkey_patch()
 
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow warnings
 import re
-from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, Response, send_from_directory
+from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, Response, \
+    send_from_directory
 from flask_socketio import SocketIO, emit, join_room
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, FileField, SelectField
@@ -28,6 +31,8 @@ from datetime import datetime, timedelta
 import speech_recognition as sr
 from io import BytesIO
 import wave
+from collections import defaultdict
+from threading import Lock
 
 # Initialize Flask and SocketIO
 app = Flask(__name__)
@@ -62,6 +67,10 @@ hands = mp_hands.Hands(
 
 # Initialize speech recognition
 recognizer = sr.Recognizer()
+
+# Глобальные переменные для отслеживания онлайн-статуса
+online_users = set()
+online_lock = Lock()
 
 # Define gestures based on finger states (0 = down, 1 = up)
 GESTURES = {
@@ -100,11 +109,13 @@ morph = pymorphy.MorphAnalyzer()
 genai.configure(api_key="AIzaSyBNR9ULDDEAJ2iW_0b6GgT9lfSOqs-dwMw")
 gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
+
 # Forms
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
+
 
 class RegisterForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
@@ -116,10 +127,12 @@ class RegisterForm(FlaskForm):
     interests = StringField('Interests')
     submit = SubmitField('Register')
 
+
 class StoryForm(FlaskForm):
     content = StringField('Content', validators=[DataRequired()])
     image = FileField('Image', validators=[DataRequired()])
     submit = SubmitField('Add Story')
+
 
 class AddFriendForm(FlaskForm):
     submit = SubmitField('Добавить в друзья')
@@ -266,6 +279,7 @@ def process_audio(audio_data, sample_rate=16000):
         logger.error(f"Error processing audio: {e}")
         return f"Ошибка обработки аудио: {e}", False
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -325,44 +339,104 @@ def draw_finger_tips(frame, landmarks, image_width, image_height):
         cv2.circle(frame, (x, y), 10, color, -1)
 
 
-def send_notifications(user_id):
-    conn = sqlite3.connect('nana.db')
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT users.username, 
-               (SELECT COUNT(*) FROM chat_messages 
-                WHERE chat_messages.chat_id = chats.id 
-                AND chat_messages.sender_id != ? 
-                AND chat_messages.is_read = 0) AS unread_count
-        FROM chats 
-        JOIN users ON (chats.user1_id = users.id OR chats.user2_id = users.id)
-        WHERE (chats.user1_id = ? OR chats.user2_id = ?) 
-        AND users.id != ?
-        AND (SELECT COUNT(*) FROM chat_messages 
-             WHERE chat_messages.chat_id = chats.id 
-             AND chat_messages.sender_id != ? 
-             AND chat_messages.is_read = 0) > 0
-    """, (user_id, user_id, user_id, user_id, user_id))
-    unread_notifications = cursor.fetchall()
-    notifications = [(f"{username} sent you {unread_count} message(s)", None) for username, unread_count in
-                     unread_notifications]
-    cursor.execute("SELECT content, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
-                   (user_id,))
-    notifications.extend(cursor.fetchall())
-    total_unread = len(notifications)
-    conn.close()
-    logger.info(f"Отправка уведомлений для user_id {user_id}: {notifications}, total_unread: {total_unread}")
-    socketio.emit('update_notifications', {
-        'user_id': user_id,
-        'notifications': notifications,
-        'total_unread': total_unread
-    }, room=str(user_id))
+def send_notifications_real_time(user_id, notification_content=None):
+    """
+    Улучшенная функция отправки уведомлений в реальном времени
+    """
+    try:
+        conn = sqlite3.connect('nana.db')
+        cursor = conn.cursor()
+
+        # Если передано конкретное уведомление, сохраняем его
+        if notification_content:
+            cursor.execute(
+                "INSERT INTO notifications (user_id, content) VALUES (?, ?)",
+                (user_id, notification_content)
+            )
+            conn.commit()
+
+        # Получаем все актуальные уведомления
+        cursor.execute("""
+            SELECT 
+                n.content, 
+                n.created_at,
+                CASE 
+                    WHEN n.content LIKE '%sent you%message%' THEN 'message'
+                    WHEN n.content LIKE '%friend request%' THEN 'friend_request'
+                    WHEN n.content LIKE '%liked your post%' THEN 'like'
+                    WHEN n.content LIKE '%commented on your post%' THEN 'comment'
+                    WHEN n.content LIKE '%accepted your friend request%' THEN 'friend_accept'
+                    ELSE 'system'
+                END as type
+            FROM notifications n
+            WHERE n.user_id = ? 
+            ORDER BY n.created_at DESC 
+            LIMIT 20
+        """, (user_id,))
+
+        notifications = cursor.fetchall()
+
+        # Получаем количество непрочитанных сообщений
+        cursor.execute("""
+            SELECT COUNT(*) as unread_messages
+            FROM chat_messages cm
+            JOIN chats c ON cm.chat_id = c.id
+            WHERE (c.user1_id = ? OR c.user2_id = ?)
+            AND cm.sender_id != ?
+            AND cm.is_read = 0
+        """, (user_id, user_id, user_id))
+
+        unread_messages = cursor.fetchone()[0] or 0
+
+        # Получаем количество заявок в друзья
+        cursor.execute("""
+            SELECT COUNT(*) as pending_requests
+            FROM friends f
+            WHERE f.friend_id = ? 
+            AND f.status = 'pending'
+        """, (user_id,))
+
+        pending_requests = cursor.fetchone()[0] or 0
+
+        conn.close()
+
+        # Подготавливаем данные для отправки
+        notification_data = {
+            'user_id': user_id,
+            'notifications': [
+                {
+                    'content': n[0],
+                    'created_at': n[1],
+                    'type': n[2]
+                } for n in notifications
+            ],
+            'unread_count': len(notifications),
+            'unread_messages': unread_messages,
+            'pending_requests': pending_requests,
+            'timestamp': datetime.now().isoformat()
+        }
+
+        # Проверяем, онлайн ли пользователь
+        with online_lock:
+            is_online = user_id in online_users
+
+        # Отправляем только если пользователь онлайн
+        if is_online:
+            logger.info(f"Sending real-time notifications to user_id {user_id}")
+            socketio.emit('update_notifications', notification_data, room=str(user_id))
+
+        return notification_data
+
+    except Exception as e:
+        logger.error(f"Error in send_notifications_real_time: {e}")
+        return None
 
 
 # Routes
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/x-icon')
+
 
 @app.route('/speech_history')
 def speech_history():
@@ -388,6 +462,7 @@ def speech_history():
     conn.close()
 
     return render_template('speech_history.html', speech_history=speech_history)
+
 
 @app.route('/', methods=['GET'])
 def home():
@@ -479,12 +554,12 @@ def home():
     """, (user_id, datetime.now()))
     stories = cursor.fetchall()
     conn.close()
-    send_notifications(user_id)
+    send_notifications_real_time(user_id)
     search_form = AddFriendForm()
     form = AddFriendForm()
     return render_template('home.html',
                            username=user[0],
-                           posts=posts,  # Используйте загруженные посты
+                           posts=posts,
                            friends=friends,
                            friend_requests=friend_requests,
                            notifications=notifications,
@@ -648,15 +723,18 @@ def add_friend(friend_id):
                                (user_id, friend_id))
                 cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
                 sender_username = cursor.fetchone()[0]
-                cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
-                               (friend_id, f"{sender_username} sent you a friend request"))
+
+                # Отправляем уведомление в реальном времени
+                send_notifications_real_time(friend_id, f"{sender_username} sent you a friend request")
+
                 conn.commit()
                 logger.info(f"Friend request sent to user {friend_id}")
+
                 socketio.emit('new_friend_request', {
                     'sender_id': user_id,
                     'sender_username': sender_username
                 }, room=str(friend_id))
-                send_notifications(friend_id)
+
             else:
                 logger.info(f"Friend request to user {friend_id} already exists")
         except sqlite3.Error as e:
@@ -685,15 +763,18 @@ def accept_friend(friend_id):
             acceptor_username = cursor.fetchone()[0]
             cursor.execute("SELECT username FROM users WHERE id = ?", (friend_id,))
             friend_username = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
-                           (friend_id, f"{acceptor_username} accepted your friend request"))
+
+            # Отправляем уведомление в реальном времени
+            send_notifications_real_time(friend_id, f"{acceptor_username} accepted your friend request")
+
             conn.commit()
             logger.info(f"Friend request from {friend_id} accepted by {user_id}")
+
             socketio.emit('friend_request_accepted', {
                 'friend_id': user_id,
                 'friend_username': acceptor_username
             }, room=str(friend_id))
-            send_notifications(friend_id)
+
         except sqlite3.Error as e:
             logger.error(f"Database error: {e}")
             conn.rollback()
@@ -717,12 +798,15 @@ def reject_friend(friend_id):
             cursor.execute("DELETE FROM friends WHERE user_id = ? AND friend_id = ?", (friend_id, user_id))
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             rejector_username = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
-                           (friend_id, f"{rejector_username} rejected your friend request"))
+
+            # Отправляем уведомление в реальном времени
+            send_notifications_real_time(friend_id, f"{rejector_username} rejected your friend request")
+
             conn.commit()
             logger.info(f"Friend request from {friend_id} rejected by {user_id}")
+
             socketio.emit('friend_request_rejected', {'friend_id': user_id}, room=str(friend_id))
-            send_notifications(friend_id)
+
         except sqlite3.Error as e:
             logger.error(f"Database error: {e}")
             conn.rollback()
@@ -789,8 +873,8 @@ def chat(chat_id):
     """, (chat_id, user_id))
     conn.commit()
     other_user_id = chat[2] if chat[3] == user_id else chat[3]
-    send_notifications(other_user_id)
-    send_notifications(user_id)
+    send_notifications_real_time(other_user_id)
+    send_notifications_real_time(user_id)
     conn.close()
     return render_template('chat.html', chat=chat, messages=messages, user_id=user_id, chat_id=chat_id)
 
@@ -832,10 +916,14 @@ def send_message():
             'content': content,
             'created_at': created_at
         }
+
+        # Отправляем уведомление о новом сообщении
+        send_notifications_real_time(other_user_id, f"{username}: {content[:50]}{'...' if len(content) > 50 else ''}")
+
         socketio.emit('new_message', message_data, room=str(other_user_id))
         socketio.emit('new_message', message_data, room=str(user_id))
         socketio.emit('message_sent', message_data, room=str(user_id))
-        send_notifications(other_user_id)
+
         return jsonify({
             'status': 'success',
             'chat_id': chat_id,
@@ -863,7 +951,17 @@ def clear_notifications():
         cursor.execute("DELETE FROM notifications WHERE user_id = ?", (user_id,))
         conn.commit()
         logger.info(f"Notifications cleared for user_id: {user_id}")
-        send_notifications(user_id)
+
+        # Отправляем пустой список уведомлений в реальном времени
+        socketio.emit('update_notifications', {
+            'user_id': user_id,
+            'notifications': [],
+            'unread_count': 0,
+            'unread_messages': 0,
+            'pending_requests': 0,
+            'timestamp': datetime.now().isoformat()
+        }, room=str(user_id))
+
         return jsonify({'status': 'success', 'message': 'Notifications cleared'})
     except sqlite3.Error as e:
         logger.error(f"Database error while clearing notifications for user_id {user_id}: {e}")
@@ -895,8 +993,9 @@ def register():
             conn.close()
             return render_template('register.html', form=form, error="Username already exists")
         hashed_password = generate_password_hash(password)
-        cursor.execute("INSERT INTO users (username, password, description, city, gender, interests) VALUES (?, ?, ?, ?, ?, ?)",
-                       (username, hashed_password, description, city, gender, interests))
+        cursor.execute(
+            "INSERT INTO users (username, password, description, city, gender, interests) VALUES (?, ?, ?, ?, ?, ?)",
+            (username, hashed_password, description, city, gender, interests))
         conn.commit()
         conn.close()
         return redirect(url_for('login'))
@@ -916,8 +1015,9 @@ def profile():
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT username, description, relationship_status, avatar, city, gender, interests FROM users WHERE id = ?",
-                   (user_id,))
+    cursor.execute(
+        "SELECT username, description, relationship_status, avatar, city, gender, interests FROM users WHERE id = ?",
+        (user_id,))
     user = cursor.fetchone()
     cursor.execute("""
         SELECT posts.id, posts.content, posts.created_at, users.username, posts.image,
@@ -977,8 +1077,9 @@ def profile():
             avatar_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             avatar.save(avatar_path)
             avatar_filename = filename
-        cursor.execute("UPDATE users SET description = ?, relationship_status = ?, avatar = ?, city = ?, gender = ?, interests = ? WHERE id = ?",
-                       (description, relationship_status, avatar_filename, city, gender, interests, user_id))
+        cursor.execute(
+            "UPDATE users SET description = ?, relationship_status = ?, avatar = ?, city = ?, gender = ?, interests = ? WHERE id = ?",
+            (description, relationship_status, avatar_filename, city, gender, interests, user_id))
         conn.commit()
         flash('Profile updated successfully', 'success')
         return jsonify({'status': 'success', 'avatar': f'/static/avatars/{avatar_filename}'})
@@ -1010,10 +1111,10 @@ def like_post(post_id):
         if post_owner and post_owner[0] != user_id:
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             liker_username = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
-                           (post_owner[0], f"{liker_username} liked your post"))
-            conn.commit()
-            send_notifications(post_owner[0])
+
+            # Отправляем уведомление в реальном времени
+            send_notifications_real_time(post_owner[0], f"{liker_username} liked your post")
+
     conn.commit()
     cursor.execute("""
         SELECT (SELECT COUNT(*) FROM post_reactions WHERE post_id = ? AND reaction = 'like') AS likes,
@@ -1063,10 +1164,10 @@ def dislike_post(post_id):
         if post_owner and post_owner[0] != user_id:
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             disliker_username = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
-                           (post_owner[0], f"{disliker_username} disliked your post"))
-            conn.commit()
-            send_notifications(post_owner[0])
+
+            # Отправляем уведомление в реальном времени
+            send_notifications_real_time(post_owner[0], f"{disliker_username} disliked your post")
+
     conn.commit()
     cursor.execute("""
         SELECT (SELECT COUNT(*) FROM post_reactions WHERE post_id = ? AND reaction = 'like') AS likes,
@@ -1102,7 +1203,7 @@ def create_post():
     image = request.files.get('image')
     photo_path = request.form.get('photo_path')
     emotion = request.form.get('emotion', None)
-    speech_text = request.form.get('speech_text', '')  # Новый параметр для речи
+    speech_text = request.form.get('speech_text', '')
 
     # Если есть распознанная речь, используем её как содержание поста
     if speech_text and speech_text.strip() and (not content or content.strip() == ''):
@@ -1154,9 +1255,10 @@ def create_post():
         'dislikes': 0,
         'user_reaction': None,
         'emotion': emotion,
-        'has_speech': bool(speech_text and speech_text.strip())  # Показываем, что пост создан с речью
+        'has_speech': bool(speech_text and speech_text.strip())
     })
     return redirect(url_for('home'))
+
 
 @app.route('/enhance_post', methods=['POST'])
 def enhance_post():
@@ -1222,10 +1324,11 @@ def add_comment():
                    (post_id,))
     post_owner = cursor.fetchone()
     if post_owner and post_owner[0] != user_id:
-        cursor.execute("INSERT INTO notifications (user_id, content) VALUES (?, ?)",
-                       (post_owner[0], f"{username} commented on your post"))
+        # Отправляем уведомление в реальном времени
+        send_notifications_real_time(post_owner[0], f"{username} commented on your post")
+
         conn.commit()
-        send_notifications(post_owner[0])
+
     conn.close()
     return jsonify({
         'status': 'success',
@@ -1271,7 +1374,7 @@ def create_story():
             image.save(target_path)
             image_filename = filename
 
-        expires_at = datetime.now() + timedelta(hours=24)  # Stories expire after 24 hours
+        expires_at = datetime.now() + timedelta(hours=24)
         conn = sqlite3.connect('nana.db')
         cursor = conn.cursor()
         cursor.execute("INSERT INTO stories (user_id, content, image, expires_at) VALUES (?, ?, ?, ?)",
@@ -1293,7 +1396,7 @@ def create_story():
             'expires_at': expires_at
         })
         return redirect(url_for('home'))
-    return redirect(url_for('home'))  # Redirect with error handling if validation fails
+    return redirect(url_for('home'))
 
 
 @app.route('/view_story/<int:story_id>', methods=['POST'])
@@ -1315,6 +1418,7 @@ def view_story(story_id):
         return jsonify({'status': 'error', 'message': str(e)}), 500
     finally:
         conn.close()
+
 
 @app.route('/get_story/<int:story_id>', methods=['GET'])
 def get_story(story_id):
@@ -1346,12 +1450,122 @@ def serve_story_file(filename):
     return send_from_directory(app.config['STORIES_FOLDER'], filename)
 
 
+# Новые endpoints для уведомлений
+@app.route('/api/notifications/latest')
+def get_latest_notifications():
+    """Получить последние уведомления"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    user_id = session['user_id']
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT content, created_at 
+        FROM notifications 
+        WHERE user_id = ? 
+        ORDER BY created_at DESC 
+        LIMIT 10
+    """, (user_id,))
+
+    notifications = cursor.fetchall()
+
+    # Считаем количество непрочитанных
+    cursor.execute("SELECT COUNT(*) FROM notifications WHERE user_id = ?", (user_id,))
+    unread_count = cursor.fetchone()[0]
+
+    conn.close()
+
+    return jsonify({
+        'notifications': notifications,
+        'unread_count': unread_count,
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+@app.route('/api/notifications/check')
+def check_new_notifications():
+    """Проверить наличие новых уведомлений"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    user_id = session['user_id']
+    last_check = request.args.get('last_check', datetime.now().isoformat())
+
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*) 
+        FROM notifications 
+        WHERE user_id = ? AND created_at > ?
+    """, (user_id, last_check))
+
+    new_count = cursor.fetchone()[0]
+    conn.close()
+
+    return jsonify({
+        'has_new': new_count > 0,
+        'new_count': new_count,
+        'timestamp': datetime.now().isoformat()
+    })
+
+
 # SocketIO event handlers
 @socketio.on('connect')
 def handle_connect():
     logger.info('Клиент подключился')
     if 'user_id' in session:
-        join_room(str(session['user_id']))
+        user_id = session['user_id']
+        join_room(str(user_id))
+
+        # Добавляем пользователя в онлайн
+        with online_lock:
+            online_users.add(user_id)
+
+        # Отправляем текущий онлайн статус
+        emit('online_status', {'status': 'online', 'user_id': user_id})
+
+        # Немедленно отправляем уведомления при подключении
+        send_notifications_real_time(user_id)
+
+        logger.info(f'User {user_id} connected and subscribed to notifications')
+
+
+@socketio.on('user_online')
+def handle_user_online():
+    """Пользователь в сети"""
+    user_id = session.get('user_id')
+    if user_id:
+        with online_lock:
+            online_users.add(user_id)
+        logger.info(f"User {user_id} is now online")
+
+        # Немедленно отправляем уведомления при подключении
+        send_notifications_real_time(user_id)
+        emit('online_status', {'status': 'online', 'user_id': user_id})
+
+
+@socketio.on('user_offline')
+def handle_user_offline():
+    """Пользователь вышел из сети"""
+    user_id = session.get('user_id')
+    if user_id:
+        with online_lock:
+            online_users.discard(user_id)
+        logger.info(f"User {user_id} is now offline")
+        emit('online_status', {'status': 'offline', 'user_id': user_id})
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Обработка отключения"""
+    user_id = session.get('user_id')
+    if user_id:
+        with online_lock:
+            online_users.discard(user_id)
+        logger.info(f"User {user_id} disconnected")
 
 
 @socketio.on('audio_data')
@@ -1407,6 +1621,7 @@ def handle_join_speech_room(data):
         room_name = f'speech_room_{user_id}'
         join_room(room_name)
         emit('speech_room_joined', {'room': room_name})
+
 
 @socketio.on('join_room')
 def on_join(data):
@@ -1503,6 +1718,7 @@ if __name__ == '__main__':
         # Если запускаемся в Colab — пробрасываем ngrok вручную
         if 'COLAB_GPU' in os.environ or 'COLAB_TPU_ADDR' in os.environ:
             from pyngrok import ngrok
+
             public_url = ngrok.connect(5000)
             print(f"✅ Открой сайт по ссылке: {public_url}")
 
