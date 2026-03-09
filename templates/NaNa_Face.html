@@ -622,6 +622,29 @@
         let currentVoiceCommand = null;
         let autoConfirmTimer = null;
 
+        // Функция для проверки сессии
+        function checkSessionAndRedirect(url) {
+            fetch('/check_session', {
+                method: 'GET',
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Session check:', data);
+                if (data.logged_in) {
+                    currentUserId = data.user_id;
+                    window.location.href = url;
+                } else {
+                    alert('Сессия истекла. Пожалуйста, войдите снова.');
+                    window.location.href = '/login';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking session:', error);
+                window.location.href = url;
+            });
+        }
+        
         function updateEmotionDisplay(emotionName, confidence) {
             emotionText.textContent = emotionName;
             emotionConfidence.style.width = `${confidence * 100}%`;
@@ -714,47 +737,37 @@
                 case 'open_profile':
                     stopCamera();
                     showToast('Переход в профиль...');
-                    setTimeout(() => {
-                        window.location.href = '{{ url_for("profile") }}';
-                    }, 1000);
+                    checkSessionAndRedirect('{{ url_for("profile") }}');
                     break;
-
+        
                 case 'open_friends':
                     stopCamera();
                     showToast('Открываю список друзей...');
-                    setTimeout(() => {
-                        window.location.href = '{{ url_for("face_chat") }}';
-                    }, 1000);
+                    checkSessionAndRedirect('{{ url_for("face_chat") }}');
                     break;
-
+        
                 case 'create_post':
                     showToast('Создание нового поста...');
-                    // Здесь можно открыть модальное окно для создания поста
-                    // или перенаправить на страницу создания поста
-                    setTimeout(() => {
-                        window.location.href = '{{ url_for("home") }}';
-                    }, 1000);
+                    checkSessionAndRedirect('{{ url_for("home") }}');
                     break;
-
+        
                 case 'logout':
                     showToast('Выход из системы...');
                     setTimeout(() => {
                         window.location.href = '{{ url_for("logout") }}';
                     }, 1500);
                     break;
-
+        
                 case 'go_home':
                     stopCamera();
                     showToast('Переход на главную...');
-                    setTimeout(() => {
-                        window.location.href = '{{ url_for("home") }}';
-                    }, 1000);
+                    checkSessionAndRedirect('{{ url_for("home") }}');
                     break;
-
+        
                 case 'help':
                     showToast('Доступные команды: "открыть профиль", "друзья", "выйти", "домой", "создать пост"');
                     break;
-
+        
                 case 'take_photo':
                     showToast('Покажите жестом "КУЛАК" для фото');
                     break;
@@ -957,9 +970,24 @@
 
         socket.on('connect', () => {
             logWithTimestamp('Подключение к SocketIO установлено');
-            const userId = {{ session['user_id'] if session.get('user_id') else 'null' }};
-            if (userId) socket.emit('join_room', userId);
-            startCamera();
+            
+            // Проверяем сессию
+            fetch('/check_session')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.logged_in) {
+                        currentUserId = data.user_id;
+                        socket.emit('join_room', currentUserId);
+                        console.log('Joined room for user:', currentUserId);
+                        startCamera();
+                    } else {
+                        console.log('No active session');
+                        window.location.href = '/login';
+                    }
+                })
+                .catch(err => {
+                    console.error('Session check failed:', err);
+                });
         });
 
         socket.on('connect_error', (error) => {
@@ -1017,16 +1045,9 @@
             }
         });
 
-        socket.on('spiderman_gesture', (data) => {
-            logWithTimestamp('Обнаружен жест Человека-паука');
-            spidermanMessage.textContent = data.message;
-            spidermanDialog.classList.remove('hidden');
-        });
-
         socket.on('rock_gesture', () => {
             logWithTimestamp('Обнаружен жест РОК');
-            stopCamera();
-            window.location.href = '{{ url_for("face_chat") }}';
+            checkSessionAndRedirect('/face_chat');
         });
 
         socket.on('voice_command', function(data) {
@@ -1086,10 +1107,25 @@
                 reader.readAsDataURL(audioBlob);
             });
         }
-
+        // Периодическая проверка сессии
+        setInterval(function() {
+            fetch('/check_session', {
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.logged_in && window.location.pathname !== '/login') {
+                    console.log('Session expired');
+                    alert('Сессия истекла. Пожалуйста, войдите снова.');
+                    window.location.href = '/login';
+                }
+            })
+            .catch(err => console.log('Session check failed:', err));
+        }, 30000); // Проверка каждые 30 секунд
         // Initialize with default values
         updateEmotionDisplay('нейтрально', 0.5);
         updateGestureDisplay('Ожидание...');
+        
     </script>
 </body>
 </html>
