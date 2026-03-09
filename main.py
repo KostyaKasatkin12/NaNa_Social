@@ -14,6 +14,7 @@ from wtforms import StringField, PasswordField, SubmitField, FileField, SelectFi
 from wtforms.validators import DataRequired
 from flask_wtf.csrf import CSRFProtect
 import sqlite3
+from forms import LoginForm, RegisterForm, StoryForm, AddFriendForm, SearchForm
 import cv2
 from fer import FER
 import mediapipe as mp
