@@ -1030,18 +1030,13 @@ def logout():
 def profile():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
-    
-    # Получение данных пользователя
     cursor.execute(
         "SELECT username, description, relationship_status, avatar, city, gender, interests FROM users WHERE id = ?",
         (user_id,))
     user = cursor.fetchone()
-    
-    # Получение постов пользователя
     cursor.execute("""
         SELECT posts.id, posts.content, posts.created_at, users.username, posts.image,
                (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id AND reaction = 'like') AS likes,
@@ -1060,8 +1055,6 @@ def profile():
         ORDER BY posts.created_at DESC
     """, (user_id, user_id))
     posts_raw = cursor.fetchall()
-    
-    # Обработка постов
     posts = []
     for post in posts_raw:
         latest_comment = json.loads(post[8])[0] if post[8] and json.loads(post[8]) else None
@@ -1077,15 +1070,12 @@ def profile():
             'latest_comment': latest_comment,
             'emotion': post[9]
         })
-    
-    # Получение друзей
     cursor.execute("""
         SELECT users.username, users.id FROM friends 
         JOIN users ON friends.friend_id = users.id
         WHERE friends.user_id = ? AND friends.status = 'accepted'
     """, (user_id,))
     friends = cursor.fetchall()
-    
     cities = ["Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань", "Нижний Новгород", "Челябинск",
               "Самара", "Омск", "Ростов-на-Дону"]
     
