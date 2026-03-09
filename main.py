@@ -41,6 +41,12 @@ app.secret_key = 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5'  # Replace with a secure key
 app.config['UPLOAD_FOLDER'] = 'static/avatars'
 app.config['STORIES_FOLDER'] = 'static/stories'
 app.config['AUDIO_FOLDER'] = 'static/audio'
+# Добавьте эти настройки после создания app
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = False  # Для HTTP в Colab
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_DOMAIN'] = None
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 csrf = CSRFProtect(app)
 
