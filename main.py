@@ -241,6 +241,47 @@ def init_db():
     conn.close()
 
 
+def process_voice_command(text):
+    """
+    Обрабатывает голосовые команды и возвращает тип действия
+    """
+    if not text or not isinstance(text, str):
+        return None
+
+    text = text.lower().strip()
+
+    # Команда для открытия профиля
+    if any(cmd in text for cmd in
+           ['открыть профиль', 'профиль', 'мой профиль', 'показать профиль', 'перейти в профиль']):
+        return 'open_profile'
+
+    # Команда для открытия списка друзей
+    elif any(cmd in text for cmd in ['открыть друзей', 'список друзей', 'мои друзья', 'друзья', 'показать друзей']):
+        return 'open_friends'
+
+    # Команда для создания поста
+    elif any(cmd in text for cmd in ['создать пост', 'новый пост', 'написать пост', 'добавить пост']):
+        return 'create_post'
+
+    # Команда для выхода
+    elif any(cmd in text for cmd in ['выйти', 'выход', 'разлогиниться', 'logout', 'выйти из системы']):
+        return 'logout'
+
+    # Команда для возврата домой
+    elif any(cmd in text for cmd in ['домой', 'на главную', 'главная', 'home', 'главная страница']):
+        return 'go_home'
+
+    # Команда для помощи
+    elif any(cmd in text for cmd in ['помощь', 'справка', 'что ты умеешь', 'команды']):
+        return 'help'
+
+    # Команда для фото
+    elif any(cmd in text for cmd in ['сделать фото', 'сфотографировать', 'фото', 'снимок']):
+        return 'take_photo'
+
+    return None
+
+
 def process_audio(audio_data, sample_rate=16000):
     """
     Обработка аудио данных и распознавание речи
@@ -267,17 +308,21 @@ def process_audio(audio_data, sample_rate=16000):
 
             # Пытаемся распознать речь на русском языке
             text = recognizer.recognize_google(audio, language='ru-RU')
-            return text, True
+
+            # Проверяем, является ли текст командой
+            command = process_voice_command(text)
+
+            return text, True, command
 
     except sr.UnknownValueError:
         logger.warning("Speech recognition could not understand audio")
-        return "Речь не распознана", False
+        return "Речь не распознана", False, None
     except sr.RequestError as e:
         logger.error(f"Could not request results from Google Speech Recognition service: {e}")
-        return f"Ошибка сервиса распознавания: {e}", False
+        return f"Ошибка сервиса распознавания: {e}", False, None
     except Exception as e:
         logger.error(f"Error processing audio: {e}")
-        return f"Ошибка обработки аудио: {e}", False
+        return f"Ошибка обработки аудио: {e}", False, None
 
 
 def allowed_file(filename):
@@ -1585,7 +1630,7 @@ def handle_audio_data(data):
             audio_data = base64.b64decode(audio_base64)
 
             # Обрабатываем аудио
-            recognized_text, success = process_audio(audio_data)
+            recognized_text, success, command = process_audio(audio_data)
 
             # Сохраняем в базу данных
             if success and recognized_text and recognized_text != "Речь не распознана":
@@ -1596,11 +1641,65 @@ def handle_audio_data(data):
                 conn.commit()
                 conn.close()
 
+            # Если это команда - обрабатываем
+            if command:
+                logger.info(f"Voice command detected: {command} from user {user_id}")
+
+                if command == 'open_profile':
+                    emit('voice_command', {
+                        'type': 'open_profile',
+                        'message': 'Вы хотите перейти на страницу профиля?',
+                        'text': recognized_text
+                    }, room=str(user_id))
+
+                elif command == 'open_friends':
+                    emit('voice_command', {
+                        'type': 'open_friends',
+                        'message': 'Вы хотите открыть список друзей?',
+                        'text': recognized_text
+                    }, room=str(user_id))
+
+                elif command == 'create_post':
+                    emit('voice_command', {
+                        'type': 'create_post',
+                        'message': 'Вы хотите создать новый пост?',
+                        'text': recognized_text
+                    }, room=str(user_id))
+
+                elif command == 'logout':
+                    emit('voice_command', {
+                        'type': 'logout',
+                        'message': 'Вы хотите выйти из системы?',
+                        'text': recognized_text
+                    }, room=str(user_id))
+
+                elif command == 'go_home':
+                    emit('voice_command', {
+                        'type': 'go_home',
+                        'message': 'Переход на главную страницу',
+                        'text': recognized_text
+                    }, room=str(user_id))
+
+                elif command == 'help':
+                    emit('voice_command', {
+                        'type': 'help',
+                        'message': 'Доступные команды: "открыть профиль", "друзья", "выйти", "домой", "создать пост"',
+                        'text': recognized_text
+                    }, room=str(user_id))
+
+                elif command == 'take_photo':
+                    emit('voice_command', {
+                        'type': 'take_photo',
+                        'message': 'Покажите жестом "FIST" для фото',
+                        'text': recognized_text
+                    }, room=str(user_id))
+
             # Отправляем результат обратно клиенту
             emit('speech_result', {
                 'text': recognized_text,
                 'success': success,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now().isoformat(),
+                'is_command': bool(command)
             }, room=str(user_id))
 
         else:
