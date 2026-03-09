@@ -111,34 +111,6 @@ genai.configure(api_key="AIzaSyBNR9ULDDEAJ2iW_0b6GgT9lfSOqs-dwMw")
 gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
 
-# Forms
-class LoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
-    password = PasswordField('Password', validators=[DataRequired()])
-    submit = SubmitField('Login')
-
-
-class RegisterForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
-    password = PasswordField('Password', validators=[DataRequired()])
-    confirm_password = PasswordField('Confirm Password', validators=[DataRequired()])
-    description = StringField('Description')
-    city = StringField('City')
-    gender = SelectField('Gender', choices=[('Male', 'Male'), ('Female', 'Female')], default='Male')
-    interests = StringField('Interests')
-    submit = SubmitField('Register')
-
-
-class StoryForm(FlaskForm):
-    content = StringField('Content', validators=[DataRequired()])
-    image = FileField('Image', validators=[DataRequired()])
-    submit = SubmitField('Add Story')
-
-
-class AddFriendForm(FlaskForm):
-    submit = SubmitField('Добавить в друзья')
-
-
 # Database initialization
 def init_db():
     conn = sqlite3.connect('nana.db')
