@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="w-full h-full">
+<html lang="ru" class="w-full h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome, {{ username }}. Now you are part of - NaNa</title>
+    <title>Добро пожаловать, {{ username }}. Теперь вы часть - НаНа</title>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -176,12 +176,12 @@
             <div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20"></div>
             <div class="relative z-10">
                 <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-4">
-                    Welcome, <span class="text-yellow-300">{{ username }}</span>
+                    Добро пожаловать, <span class="text-yellow-300">{{ username }}</span>
                 </h1>
-                <p class="text-xl opacity-90">Now you are part of <span class="font-bold text-blue-200">NaNa</span></p>
+                <p class="text-xl opacity-90">Теперь вы часть <span class="font-bold text-blue-200">НаНа</span></p>
                 <div class="mt-4 flex items-center justify-center gap-3">
                     <i class="fas fa-heart text-red-400"></i>
-                    <span class="text-blue-100">Connect, Share, Discover</span>
+                    <span class="text-blue-100">Общайся, Делись, Открывай</span>
                     <i class="fas fa-heart text-red-400"></i>
                 </div>
             </div>
@@ -194,10 +194,10 @@
                     <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white">
                         <i class="fas fa-camera"></i>
                     </div>
-                    Your Stories
+                    Ваши истории
                 </h2>
                 <span class="text-sm font-medium px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
-                    {{ stories|length }} stories
+                    {{ stories|length }} историй
                 </span>
             </div>
 
@@ -205,7 +205,7 @@
                 <form id="createStoryForm" method="POST" action="{{ url_for('create_story') }}" enctype="multipart/form-data" class="space-y-4">
                     {{ search_form.hidden_tag() }}
                     <div>
-                        <textarea name="content" placeholder="What's happening? Share your story..."
+                        <textarea name="content" placeholder="Что происходит? Поделитесь своей историей..."
                                 class="input-modern w-full p-4 min-h-[100px] resize-none"></textarea>
                     </div>
 
@@ -215,7 +215,7 @@
                                 <i class="fas fa-image text-blue-600 dark:text-blue-400 text-lg"></i>
                             </div>
                             <div>
-                                <span class="font-medium text-gray-700 dark:text-gray-300 block">Add Media</span>
+                                <span class="font-medium text-gray-700 dark:text-gray-300 block">Добавить медиа</span>
                                 <input type="file" name="image" accept="image/*,video/*"
                                        class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-100 dark:file:bg-blue-900 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-200 dark:hover:file:bg-blue-800">
                             </div>
@@ -223,7 +223,7 @@
 
                         <button type="submit" class="btn-primary px-6 py-3 rounded-xl font-semibold flex items-center gap-2">
                             <i class="fas fa-plus"></i>
-                            Add Story
+                            Добавить историю
                         </button>
                     </div>
                 </form>
@@ -241,7 +241,7 @@
                                                class="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800"></video>
                                     {% else %}
                                         <img src="{{ url_for('serve_story_file', filename=story.image) }}"
-                                             alt="Story" class="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800">
+                                             alt="История" class="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-800">
                                     {% endif %}
                                 {% else %}
                                     <div class="w-20 h-20 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 border-4 border-white dark:border-gray-800 flex items-center justify-center">
@@ -254,7 +254,7 @@
                             {{ story[2]|truncate(15) }}
                         </p>
                         <button onclick="viewStory({{ story[0] }})" class="story-view-btn">
-                            <i class="fas fa-eye mr-1"></i> View
+                            <i class="fas fa-eye mr-1"></i> Смотреть
                         </button>
                     </div>
                 {% endfor %}
@@ -264,8 +264,8 @@
                             <div class="w-20 h-20 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 mx-auto mb-4 flex items-center justify-center">
                                 <i class="fas fa-images text-2xl"></i>
                             </div>
-                            <p class="font-medium">No stories yet</p>
-                            <p class="text-sm mt-1">Share your first story!</p>
+                            <p class="font-medium">Пока нет историй</p>
+                            <p class="text-sm mt-1">Поделитесь своей первой историей!</p>
                         </div>
                     </div>
                 {% endif %}
@@ -283,7 +283,7 @@
                             <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white">
                                 <i class="fas fa-users"></i>
                             </div>
-                            Friends
+                            Друзья
                         </h3>
                         <span class="text-sm font-medium px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
                             {{ friends|length }}
@@ -305,7 +305,7 @@
                                         <h4 class="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
                                             {{ friend[0] }}
                                         </h4>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">Click to chat</p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">Нажмите для чата</p>
                                     </div>
                                     <i class="fas fa-chevron-right text-gray-400 group-hover:text-blue-500 transition"></i>
                                 </a>
@@ -315,8 +315,8 @@
                                 <div class="w-16 h-16 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 mx-auto mb-3 flex items-center justify-center">
                                     <i class="fas fa-user-friends text-gray-400 text-xl"></i>
                                 </div>
-                                <p class="text-gray-500 dark:text-gray-400">No friends yet</p>
-                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Search for friends below!</p>
+                                <p class="text-gray-500 dark:text-gray-400">Пока нет друзей</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Ищите друзей ниже!</p>
                             </div>
                         {% endif %}
                     </div>
@@ -336,7 +336,7 @@
                                     </span>
                                 {% endif %}
                             </div>
-                            Friend Requests
+                            Заявки в друзья
                         </h3>
                     </div>
 
@@ -349,7 +349,7 @@
                                     </div>
                                     <div>
                                         <h4 class="font-semibold text-gray-800 dark:text-gray-200">{{ request[1] }}</h4>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">Wants to connect</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Хочет подружиться</p>
                                     </div>
                                 </div>
                                 <div class="flex gap-2">
@@ -375,7 +375,7 @@
                                 <div class="w-16 h-16 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 mx-auto mb-3 flex items-center justify-center">
                                     <i class="fas fa-inbox text-gray-400 text-xl"></i>
                                 </div>
-                                <p class="text-gray-500 dark:text-gray-400">No pending requests</p>
+                                <p class="text-gray-500 dark:text-gray-400">Нет ожидающих заявок</p>
                             </div>
                         {% endif %}
                     </div>
@@ -391,18 +391,18 @@
                             <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white">
                                 <i class="fas fa-pen"></i>
                             </div>
-                            Create Post
+                            Создать пост
                         </h3>
                         <div class="flex gap-3">
                             <a href="{{ url_for('face_detector') }}"
                                class="btn-secondary px-5 py-2.5 rounded-xl flex items-center gap-2 font-semibold">
                                 <i class="fas fa-camera"></i>
-                                Photo
+                                Фото
                             </a>
                             <a href="{{ url_for('profile') }}"
                                class="bg-gradient-to-r from-gray-700 to-gray-800 dark:from-gray-600 dark:to-gray-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-semibold hover:shadow-lg transition">
                                 <i class="fas fa-user-edit"></i>
-                                Profile
+                                Профиль
                             </a>
                         </div>
                     </div>
@@ -412,7 +412,7 @@
 
                         <div>
                             <textarea name="content" id="postContent"
-                                     placeholder="What's on your mind, {{ username }}?" required
+                                     placeholder="Что у вас на уме, {{ username }}?" required
                                      class="input-modern w-full p-4 min-h-[120px] resize-none"></textarea>
                         </div>
 
@@ -426,7 +426,7 @@
                                     <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
                                         <i class="fas fa-image text-blue-600 dark:text-blue-400"></i>
                                     </div>
-                                    <span class="font-medium text-gray-700 dark:text-gray-300 hidden sm:block">Photo/Video</span>
+                                    <span class="font-medium text-gray-700 dark:text-gray-300 hidden sm:block">Фото/Видео</span>
                                     <input type="file" name="image" accept="image/*"
                                            class="hidden" id="postImageInput">
                                 </label>
@@ -434,18 +434,18 @@
                                 <button type="button" id="aiEnhanceBtn"
                                         class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-700 dark:text-purple-400 font-medium hover:shadow transition">
                                     <i class="fas fa-magic"></i>
-                                    <span>AI Enhance</span>
+                                    <span>AI Улучшить</span>
                                 </button>
                             </div>
 
                             <div class="flex items-center gap-3">
                                 <span class="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
-                                    <i class="fas fa-robot text-purple-500 mr-1"></i> NaNa_AI
+                                    <i class="fas fa-robot text-purple-500 mr-1"></i> НаНа_AI
                                 </span>
                                 <button type="submit"
                                         class="btn-primary px-6 py-3 rounded-xl flex items-center gap-2 font-semibold">
                                     <i class="fas fa-paper-plane"></i>
-                                    Post
+                                    Опубликовать
                                 </button>
                             </div>
                         </div>
@@ -459,11 +459,11 @@
                             <div class="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500 to-yellow-500 flex items-center justify-center text-white">
                                 <i class="fas fa-newspaper"></i>
                             </div>
-                            Recent Posts
+                            Последние посты
                         </h3>
                         <div class="flex items-center gap-2">
                             <i class="fas fa-fire text-orange-500"></i>
-                            <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">Latest Updates</span>
+                            <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">Последние обновления</span>
                         </div>
                     </div>
 
@@ -494,20 +494,20 @@
                                 {% if post[4] %}
                                     <div class="rounded-xl overflow-hidden mb-4 border border-gray-200 dark:border-gray-700">
                                         <img src="{{ url_for('static', filename='avatars/' + post[4]) }}"
-                                             alt="Post image" class="w-full h-auto">
+                                             alt="Изображение поста" class="w-full h-auto">
                                     </div>
                                 {% endif %}
 
                                 <div class="flex gap-6 mt-4 items-center">
                                     <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="{{ post[0] }}">
-                                        {% if post[7] == 'like' %}Unlike{% else %}Like{% endif %}
+                                        {% if post[7] == 'like' %}Не нравится{% else %}Нравится{% endif %}
                                     </button>
-                                    <span class="like-count text-gray-500 dark:text-gray-400">{{ post[5] }} likes</span>
+                                    <span class="like-count text-gray-500 dark:text-gray-400">{{ post[5] }} нравится</span>
                                     <button class="dislike-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="{{ post[0] }}">
-                                        {% if post[7] == 'dislike' %}Undislike{% else %}Dislike{% endif %}
+                                        {% if post[7] == 'dislike' %}Не дизлайк{% else %}Дизлайк{% endif %}
                                     </button>
-                                    <span class="dislike-count text-gray-500 dark:text-gray-400">{{ post[6] }} dislikes</span>
-                                    <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="{{ post[0] }}">Comment</button>
+                                    <span class="dislike-count text-gray-500 dark:text-gray-400">{{ post[6] }} дизлайков</span>
+                                    <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="{{ post[0] }}">Комментировать</button>
                                 </div>
 
                                 <!-- Latest Comment -->
@@ -523,8 +523,8 @@
                                 <div class="comments-section mt-4 hidden" id="comments-{{ post[0] }}">
                                     <div class="comments-list space-y-3"></div>
                                     <form class="comment-form mt-4 flex flex-col gap-4" data-post-id="{{ post[0] }}">
-                                        <textarea name="comment_content" placeholder="Write a comment..." required class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700 text-gray-700 dark:text-gray-300 dark:bg-gray-700 min-h-24"></textarea>
-                                        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transform hover:scale-105 transition duration-300">Send</button>
+                                        <textarea name="comment_content" placeholder="Напишите комментарий..." required class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700 text-gray-700 dark:text-gray-300 dark:bg-gray-700 min-h-24"></textarea>
+                                        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transform hover:scale-105 transition duration-300">Отправить</button>
                                     </form>
                                 </div>
                             </div>
@@ -535,7 +535,7 @@
                         <button id="loadMorePosts"
                                 class="mt-6 w-full py-3 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400 transition flex items-center justify-center gap-2">
                             <i class="fas fa-sync-alt"></i>
-                            Load More Posts
+                            Загрузить еще посты
                         </button>
                     {% endif %}
                 </div>
@@ -550,7 +550,7 @@
                             <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white">
                                 <i class="fas fa-comments"></i>
                             </div>
-                            Messages
+                            Сообщения
                         </h3>
                     </div>
 
@@ -573,7 +573,7 @@
                                     <h4 class="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition">
                                         {{ chat[1] }}
                                     </h4>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 truncate">Click to open chat</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 truncate">Нажмите для чата</p>
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-400 group-hover:text-cyan-500 transition"></i>
                             </a>
@@ -583,8 +583,8 @@
                                 <div class="w-16 h-16 rounded-full bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 mx-auto mb-3 flex items-center justify-center">
                                     <i class="fas fa-comment-slash text-gray-400 text-xl"></i>
                                 </div>
-                                <p class="text-gray-500 dark:text-gray-400">No messages yet</p>
-                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Start a conversation!</p>
+                                <p class="text-gray-500 dark:text-gray-400">Пока нет сообщений</p>
+                                <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">Начните разговор!</p>
                             </div>
                         {% endif %}
                     </div>
@@ -607,12 +607,12 @@
                                     </span>
                                 {% endif %}
                             </div>
-                            Notifications
+                            Уведомления
                         </h3>
                         <button id="clear-notifications"
                                 class="px-3 py-1.5 text-sm bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-lg hover:shadow transition flex items-center gap-1">
                             <i class="fas fa-trash-alt text-xs"></i>
-                            Clear All
+                            Очистить все
                         </button>
                     </div>
 
@@ -627,7 +627,7 @@
                                 </li>
                             {% endfor %}
                         {% else %}
-                            <li class="p-3 text-gray-500 dark:text-gray-400 italic">No new notifications</li>
+                            <li class="p-3 text-gray-500 dark:text-gray-400 italic">Нет новых уведомлений</li>
                         {% endif %}
                     </div>
                 </div>
@@ -638,19 +638,19 @@
                         <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white">
                             <i class="fas fa-search"></i>
                         </div>
-                        Find Friends
+                        Найти друзей
                     </h3>
                     <form method="POST" action="{{ url_for('search_user') }}" class="space-y-3">
                         {{ search_form.hidden_tag() }}
                         <div class="relative">
-                            <input type="text" name="username" placeholder="Search for users..." required
+                            <input type="text" name="username" placeholder="Поиск пользователей..." required
                                    class="input-modern w-full pl-10 pr-4 py-3">
                             <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         </div>
                         <button type="submit"
                                 class="btn-primary w-full py-3 rounded-xl font-semibold">
                             <i class="fas fa-search mr-2"></i>
-                            Search
+                            Поиск
                         </button>
                     </form>
                 </div>
@@ -665,8 +665,8 @@
                         N
                     </div>
                     <div>
-                        <p class="font-semibold text-gray-800 dark:text-gray-200">NaNa Social Network</p>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">© 2025 • Connect with the world</p>
+                        <p class="font-semibold text-gray-800 dark:text-gray-200">НаНа Социальная сеть</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">© 2025 • Общайся с миром</p>
                     </div>
                 </div>
 
@@ -674,11 +674,11 @@
                     <a href="{{ url_for('logout') }}"
                        class="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition font-medium">
                         <i class="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
+                        <span>Выйти</span>
                     </a>
                     <div class="text-sm text-gray-500 dark:text-gray-400">
                         <i class="fas fa-crown text-yellow-500 mr-1"></i>
-                        CEO: Kasatkin K.
+                        CEO: Касаткин К.
                     </div>
                 </div>
             </div>
@@ -691,7 +691,7 @@
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
                     <i class="fas fa-camera text-blue-500"></i>
-                    Story View
+                    Просмотр истории
                 </h2>
                 <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
                     <i class="fas fa-times"></i>
@@ -704,7 +704,7 @@
                 <p id="storyCaption" class="text-gray-800 dark:text-gray-200 text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl"></p>
             </div>
             <button onclick="closeModal()" class="w-full py-3 rounded-xl bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-700 dark:to-gray-800 text-white font-semibold hover:shadow transition">
-                Close Story
+                Закрыть историю
             </button>
         </div>
     </div>
@@ -715,7 +715,7 @@
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
                     <i class="fas fa-robot text-purple-500"></i>
-                    Choose Your Post
+                    Выберите ваш пост
                 </h2>
                 <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl">
                     <i class="fas fa-times"></i>
@@ -726,31 +726,31 @@
                 <div class="p-5 rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
                         <i class="fas fa-user text-blue-500"></i>
-                        Original Post
+                        Оригинальный пост
                     </h3>
                     <p id="originalPost" class="p-4 bg-white dark:bg-gray-700 rounded-xl text-gray-800 dark:text-gray-200 mb-4"></p>
                     <button onclick="submitPost('original')"
                             class="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold hover:shadow transition">
-                        Post Original
+                        Опубликовать оригинал
                     </button>
                 </div>
 
                 <div class="p-5 rounded-xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
                         <i class="fas fa-magic text-purple-500"></i>
-                        AI Enhanced
+                        AI Улучшенный
                     </h3>
                     <p id="enhancedPost" class="p-4 bg-white dark:bg-gray-700 rounded-xl text-gray-800 dark:text-gray-200 mb-4"></p>
                     <button onclick="submitPost('enhanced')"
                             class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:shadow transition">
-                        Post Enhanced
+                        Опубликовать улучшенный
                     </button>
                 </div>
             </div>
 
             <button onclick="closeModal()"
                     class="mt-6 w-full py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:border-gray-400 dark:hover:border-gray-500 transition">
-                Cancel
+                Отмена
             </button>
         </div>
     </div>
@@ -781,7 +781,7 @@
                     Notification.requestPermission().then(permission => {
                         isNotificationPermissionGranted = permission === 'granted';
                         if (isNotificationPermissionGranted) {
-                            console.log('Notification permission granted');
+                            console.log('Разрешение на уведомления получено');
                         }
                     });
                 } else {
@@ -808,7 +808,7 @@
 
                     setTimeout(notification.close.bind(notification), 5000);
                 } catch (e) {
-                    console.log('Browser notification error:', e);
+                    console.log('Ошибка браузерного уведомления:', e);
                 }
             }
         }
@@ -818,9 +818,9 @@
             if (notificationSound) {
                 try {
                     notificationSound.currentTime = 0;
-                    notificationSound.play().catch(e => console.log('Audio play failed:', e));
+                    notificationSound.play().catch(e => console.log('Ошибка воспроизведения звука:', e));
                 } catch (e) {
-                    console.log('Sound play error:', e);
+                    console.log('Ошибка звука:', e);
                 }
             }
         }
@@ -839,9 +839,9 @@
         // Обновить бейдж уведомлений в заголовке вкладки
         function updateTabBadge(count) {
             if (count > 0) {
-                document.title = `(${count}) NaNa`;
+                document.title = `(${count}) НаНа`;
             } else {
-                document.title = 'NaNa';
+                document.title = 'НаНа';
             }
         }
 
@@ -968,7 +968,7 @@
 
         // Обработчики WebSocket событий
         socket.on('connect', () => {
-            console.log('Connected to WebSocket server');
+            console.log('Подключено к WebSocket серверу');
             socket.emit('join_room', userId);
             socket.emit('user_online');
 
@@ -985,13 +985,13 @@
         });
 
         socket.on('connect_error', (error) => {
-            console.error('WebSocket connection error:', error);
+            console.error('Ошибка WebSocket соединения:', error);
             // Показываем уведомление о потере соединения
             showToastNotification('Потеряно соединение с сервером. Пытаемся переподключиться...');
         });
 
         socket.on('reconnect', () => {
-            console.log('Reconnected to WebSocket server');
+            console.log('Переподключено к WebSocket серверу');
             showToastNotification('Соединение восстановлено');
         });
 
@@ -999,7 +999,7 @@
         socket.on('update_notifications', function(data) {
             if (data.user_id != userId) return;
 
-            console.log('Real-time notification update:', data);
+            console.log('Обновление уведомлений в реальном времени:', data);
 
             // Обновляем интерфейс
             if (data.notifications) {
@@ -1018,7 +1018,7 @@
                 animateNotification();
 
                 // Браузерное уведомление
-                showBrowserNotification('NaNa', latestNotification.content);
+                showBrowserNotification('НаНа', latestNotification.content);
             }
         });
 
@@ -1068,10 +1068,10 @@
                 const dislikeSpan = post.querySelector('.dislike-count');
 
                 if (likeButton && dislikeButton && likeSpan && dislikeSpan) {
-                    likeButton.textContent = data.user_reaction === 'like' ? 'Unlike' : 'Like';
-                    dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Undislike' : 'Dislike';
-                    likeSpan.textContent = `${data.likes} likes`;
-                    dislikeSpan.textContent = `${data.dislikes} dislikes`;
+                    likeButton.textContent = data.user_reaction === 'like' ? 'Не нравится' : 'Нравится';
+                    dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Не дизлайк' : 'Дизлайк';
+                    likeSpan.textContent = `${data.likes} нравится`;
+                    dislikeSpan.textContent = `${data.dislikes} дизлайков`;
                 }
             }
         });
@@ -1085,7 +1085,7 @@
 
         socket.on('online_status', function(data) {
             // Показать статус онлайн/оффлайн друзей
-            console.log('Online status update:', data);
+            console.log('Обновление статуса онлайн:', data);
         });
 
         socket.on('new_post', function(data) {
@@ -1113,15 +1113,15 @@
                 <p class="text-gray-800 dark:text-gray-200 mb-4 leading-relaxed">${data.content}</p>
 
                 ${data.image ? `<div class="rounded-xl overflow-hidden mb-4 border border-gray-200 dark:border-gray-700">
-                    <img src="/static/avatars/${data.image}" alt="Post image" class="w-full h-auto">
+                    <img src="/static/avatars/${data.image}" alt="Изображение поста" class="w-full h-auto">
                 </div>` : ''}
 
                 <div class="flex gap-6 mt-4 items-center">
-                    <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${data.id}">Like</button>
-                    <span class="like-count text-gray-500 dark:text-gray-400">${data.likes} likes</span>
-                    <button class="dislike-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${data.id}">Dislike</button>
-                    <span class="dislike-count text-gray-500 dark:text-gray-400">${data.dislikes} dislikes</span>
-                    <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${data.id}">Comment</button>
+                    <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${data.id}">Нравится</button>
+                    <span class="like-count text-gray-500 dark:text-gray-400">${data.likes} нравится</span>
+                    <button class="dislike-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${data.id}">Дизлайк</button>
+                    <span class="dislike-count text-gray-500 dark:text-gray-400">${data.dislikes} дизлайков</span>
+                    <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${data.id}">Комментировать</button>
                 </div>
 
                 <div class="latest-comment mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hidden" id="latest-comment-${data.id}"></div>
@@ -1129,8 +1129,8 @@
                 <div class="comments-section mt-4 hidden" id="comments-${data.id}">
                     <div class="comments-list space-y-3"></div>
                     <form class="comment-form mt-4 flex flex-col gap-4" data-post-id="${data.id}">
-                        <textarea name="comment_content" placeholder="Write a comment..." required class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700 text-gray-700 dark:text-gray-300 dark:bg-gray-700 min-h-24"></textarea>
-                        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transform hover:scale-105 transition duration-300">Send</button>
+                        <textarea name="comment_content" placeholder="Напишите комментарий..." required class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700 text-gray-700 dark:text-gray-300 dark:bg-gray-700 min-h-24"></textarea>
+                        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transform hover:scale-105 transition duration-300">Отправить</button>
                     </form>
                 </div>
             `;
@@ -1188,7 +1188,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error clearing notifications:', error);
+                console.error('Ошибка очистки уведомлений:', error);
                 showToastNotification('Ошибка соединения');
             });
         });
@@ -1206,7 +1206,7 @@
                 if (document.visibilityState === 'visible') {
                     // Когда пользователь вернулся на вкладку
                     updateTabBadge(0);
-                    document.title = 'NaNa';
+                    document.title = 'НаНа';
                 }
             });
 
@@ -1300,17 +1300,17 @@
                     const dislikeButton = post.querySelector('.dislike-btn');
                     const likeSpan = post.querySelector('.like-count');
                     const dislikeSpan = post.querySelector('.dislike-count');
-                    likeButton.textContent = data.user_reaction === 'like' ? 'Unlike' : 'Like';
-                    dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Undislike' : 'Dislike';
-                    likeSpan.textContent = `${data.likes} likes`;
-                    dislikeSpan.textContent = `${data.dislikes} dislikes`;
+                    likeButton.textContent = data.user_reaction === 'like' ? 'Не нравится' : 'Нравится';
+                    dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Не дизлайк' : 'Дизлайк';
+                    likeSpan.textContent = `${data.likes} нравится`;
+                    dislikeSpan.textContent = `${data.dislikes} дизлайков`;
                 } else {
-                    alert('Error liking post: ' + data.message);
+                    alert('Ошибка при лайке поста: ' + data.message);
                 }
             })
             .catch(error => {
-                console.error('Error liking post:', error);
-                alert('Error liking post. Please try again.');
+                console.error('Ошибка при лайке поста:', error);
+                alert('Ошибка при лайке поста. Попробуйте снова.');
             });
         }
 
@@ -1331,17 +1331,17 @@
                     const dislikeButton = post.querySelector('.dislike-btn');
                     const likeSpan = post.querySelector('.like-count');
                     const dislikeSpan = post.querySelector('.dislike-count');
-                    likeButton.textContent = data.user_reaction === 'like' ? 'Unlike' : 'Like';
-                    dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Undislike' : 'Dislike';
-                    likeSpan.textContent = `${data.likes} likes`;
-                    dislikeSpan.textContent = `${data.dislikes} dislikes`;
+                    likeButton.textContent = data.user_reaction === 'like' ? 'Не нравится' : 'Нравится';
+                    dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Не дизлайк' : 'Дизлайк';
+                    likeSpan.textContent = `${data.likes} нравится`;
+                    dislikeSpan.textContent = `${data.dislikes} дизлайков`;
                 } else {
-                    alert('Error disliking post: ' + data.message);
+                    alert('Ошибка при дизлайке поста: ' + data.message);
                 }
             })
             .catch(error => {
-                console.error('Error disliking post:', error);
-                alert('Error disliking post. Please try again.');
+                console.error('Ошибка при дизлайке поста:', error);
+                alert('Ошибка при дизлайке поста. Попробуйте снова.');
             });
         }
 
@@ -1363,7 +1363,7 @@
         document.getElementById('aiEnhanceBtn')?.addEventListener('click', () => {
             const content = document.getElementById('postContent').value.trim();
             if (!content) {
-                alert('Please enter some text to enhance.');
+                alert('Пожалуйста, введите текст для улучшения.');
                 return;
             }
             fetch('/enhance_post', {
@@ -1376,7 +1376,7 @@
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    throw new Error('Ошибка сети');
                 }
                 return response.json();
             })
@@ -1384,16 +1384,16 @@
                 if (data.status === 'success') {
                     const originalPost = document.getElementById('originalPost');
                     const enhancedPost = document.getElementById('enhancedPost');
-                    originalPost.textContent = data.original_content || 'No original content';
+                    originalPost.textContent = data.original_content || 'Нет оригинального контента';
                     enhancedPost.textContent = data.enhanced_content || data.original_content + '.';
                     document.getElementById('postModal').classList.remove('hidden');
                 } else {
-                    alert('Error enhancing post: ' + (data.message || 'Unknown error'));
+                    alert('Ошибка улучшения поста: ' + (data.message || 'Неизвестная ошибка'));
                 }
             })
             .catch(error => {
-                console.error('Error enhancing post:', error);
-                alert('Error enhancing post. Please try again or check the console for details.');
+                console.error('Ошибка улучшения поста:', error);
+                alert('Ошибка улучшения поста. Попробуйте снова или проверьте консоль.');
             });
         });
 
@@ -1435,15 +1435,15 @@
                             <p class="text-gray-800 dark:text-gray-200 mb-4 leading-relaxed">${post.content}</p>
 
                             ${post.image ? `<div class="rounded-xl overflow-hidden mb-4 border border-gray-200 dark:border-gray-700">
-                                <img src="${post.image}" alt="Post image" class="w-full h-auto">
+                                <img src="${post.image}" alt="Изображение поста" class="w-full h-auto">
                             </div>` : ''}
 
                             <div class="flex gap-6 mt-4 items-center">
-                                <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${post.id}">Like</button>
-                                <span class="like-count text-gray-500 dark:text-gray-400">${post.likes} likes</span>
-                                <button class="dislike-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${post.id}">Dislike</button>
-                                <span class="dislike-count text-gray-500 dark:text-gray-400">${post.dislikes} dislikes</span>
-                                <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${post.id}">Comment</button>
+                                <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${post.id}">Нравится</button>
+                                <span class="like-count text-gray-500 dark:text-gray-400">${post.likes} нравится</span>
+                                <button class="dislike-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${post.id}">Дизлайк</button>
+                                <span class="dislike-count text-gray-500 dark:text-gray-400">${post.dislikes} дизлайков</span>
+                                <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${post.id}">Комментировать</button>
                             </div>
 
                             <div class="latest-comment mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hidden" id="latest-comment-${post.id}"></div>
@@ -1451,8 +1451,8 @@
                             <div class="comments-section mt-4 hidden" id="comments-${post.id}">
                                 <div class="comments-list space-y-3"></div>
                                 <form class="comment-form mt-4 flex flex-col gap-4" data-post-id="${post.id}">
-                                    <textarea name="comment_content" placeholder="Write a comment..." required class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700 text-gray-700 dark:text-gray-300 dark:bg-gray-700 min-h-24"></textarea>
-                                    <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transform hover:scale-105 transition duration-300">Send</button>
+                                    <textarea name="comment_content" placeholder="Напишите комментарий..." required class="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-700 text-gray-700 dark:text-gray-300 dark:bg-gray-700 min-h-24"></textarea>
+                                    <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transform hover:scale-105 transition duration-300">Отправить</button>
                                 </form>
                             </div>
                         `;
@@ -1469,8 +1469,8 @@
                 }
             })
             .catch(error => {
-                console.error('Error loading more posts:', error);
-                alert('Error loading more posts. Please try again.');
+                console.error('Ошибка загрузки постов:', error);
+                alert('Ошибка загрузки постов. Попробуйте снова.');
             });
         });
 
@@ -1491,11 +1491,11 @@
                             commentsList.appendChild(commentDiv);
                         });
                     } else {
-                        commentsList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 italic">No comments yet.</p>';
+                        commentsList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 italic">Пока нет комментариев.</p>';
                     }
                 })
                 .catch(error => {
-                    console.error('Error fetching comments:', error);
+                    console.error('Ошибка загрузки комментариев:', error);
                 });
         }
 
@@ -1543,12 +1543,12 @@
                             latestComment.classList.remove('hidden');
                             form.querySelector('textarea').value = '';
                         } else {
-                            alert('Error adding comment: ' + data.message);
+                            alert('Ошибка добавления комментария: ' + data.message);
                         }
                     })
                     .catch(error => {
-                        console.error('Error adding comment:', error);
-                        alert('Error adding comment. Please try again.');
+                        console.error('Ошибка добавления комментария:', error);
+                        alert('Ошибка добавления комментария. Попробуйте снова.');
                     });
                 });
             });
@@ -1574,30 +1574,30 @@
                                 if (story.image) {
                                     const ext = story.image.split('.').pop().toLowerCase();
                                     if (['mp4', 'mov', 'avi'].includes(ext)) {
-                                        mediaDiv.innerHTML = `<video controls class="max-w-full max-h-96 object-contain rounded-lg"><source src="{{ url_for('serve_story_file', filename='') }}${story.image}" type="video/${ext}">Your browser does not support the video tag.</video>`;
+                                        mediaDiv.innerHTML = `<video controls class="max-w-full max-h-96 object-contain rounded-lg"><source src="{{ url_for('serve_story_file', filename='') }}${story.image}" type="video/${ext}">Ваш браузер не поддерживает видео.</video>`;
                                     } else {
-                                        mediaDiv.innerHTML = `<img src="{{ url_for('serve_story_file', filename='') }}${story.image}" alt="Story" class="max-w-full max-h-96 object-contain rounded-lg">`;
+                                        mediaDiv.innerHTML = `<img src="{{ url_for('serve_story_file', filename='') }}${story.image}" alt="История" class="max-w-full max-h-96 object-contain rounded-lg">`;
                                     }
                                 } else {
-                                    mediaDiv.innerHTML = `<div class="w-full h-96 bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded-lg"><span class="text-gray-500 dark:text-gray-400">No Media</span></div>`;
+                                    mediaDiv.innerHTML = `<div class="w-full h-96 bg-gray-200 dark:bg-gray-700 flex items-center justify-center rounded-lg"><span class="text-gray-500 dark:text-gray-400">Нет медиа</span></div>`;
                                 }
-                                captionDiv.textContent = story.content || 'No caption';
+                                captionDiv.textContent = story.content || 'Нет описания';
                                 document.getElementById('storyModal').classList.remove('hidden');
                             } else {
-                                alert('Error loading story: ' + story.message);
+                                alert('Ошибка загрузки истории: ' + story.message);
                             }
                         })
                         .catch(error => {
-                            console.error('Error fetching story:', error);
-                            alert('Error loading story. Please try again.');
+                            console.error('Ошибка загрузки истории:', error);
+                            alert('Ошибка загрузки истории. Попробуйте снова.');
                         });
                 } else {
-                    alert('Error viewing story: ' + data.message);
+                    alert('Ошибка просмотра истории: ' + data.message);
                 }
             })
             .catch(error => {
-                console.error('Error viewing story:', error);
-                alert('Error viewing story. Please try again.');
+                console.error('Ошибка просмотра истории:', error);
+                alert('Ошибка просмотра истории. Попробуйте снова.');
             });
         }
 
@@ -1613,9 +1613,9 @@
             const filename = photoPath.split('/').pop();
             document.getElementById('photoPreview').innerHTML = `
                 <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mt-3">
-                    <img src="{{ url_for('static', filename='avatars/') }}${filename}" alt="Captured photo" class="w-full h-48 object-cover">
+                    <img src="{{ url_for('static', filename='avatars/') }}${filename}" alt="Сделанное фото" class="w-full h-48 object-cover">
                     <div class="p-3 bg-gray-50 dark:bg-gray-700 flex justify-between items-center">
-                        <span class="text-sm text-gray-600 dark:text-gray-300">Captured Photo</span>
+                        <span class="text-sm text-gray-600 dark:text-gray-300">Сделанное фото</span>
                         <button type="button" onclick="this.parentElement.parentElement.remove()"
                                 class="text-red-500 hover:text-red-700">
                             <i class="fas fa-times"></i>
@@ -1639,7 +1639,7 @@
                     const preview = document.getElementById('photoPreview');
                     preview.innerHTML = `
                         <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 mt-3">
-                            <img src="${event.target.result}" alt="Preview" class="w-full h-48 object-cover">
+                            <img src="${event.target.result}" alt="Предпросмотр" class="w-full h-48 object-cover">
                             <div class="p-3 bg-gray-50 dark:bg-gray-700 flex justify-between items-center">
                                 <span class="text-sm text-gray-600 dark:text-gray-300">${file.name}</span>
                                 <button type="button" onclick="this.parentElement.parentElement.remove()"
