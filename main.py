@@ -461,6 +461,20 @@ def send_notifications_real_time(user_id, notification_content=None):
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/x-icon')
 
+@app.route('/check_session', methods=['GET'])
+def check_session():
+    """Проверяет, активна ли сессия пользователя"""
+    if 'user_id' in session:
+        return jsonify({
+            'logged_in': True,
+            'user_id': session['user_id']
+        })
+    else:
+        return jsonify({
+            'logged_in': False,
+            'message': 'No active session'
+        })
+
 
 @app.route('/speech_history')
 def speech_history():
