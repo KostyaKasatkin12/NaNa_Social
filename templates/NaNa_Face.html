@@ -1049,7 +1049,15 @@
             logWithTimestamp('Обнаружен жест РОК');
             checkSessionAndRedirect('/face_chat');
         });
-
+        socket.on('spiderman_gesture', function(data) {
+            logWithTimestamp('Обнаружен жест МИР (VICTORY)');
+            console.log('Spiderman gesture data:', data);
+            
+            // Показываем диалог подтверждения
+            if (confirm(data.message || 'Вы хотите перейти на страницу своего профиля?')) {
+                checkSessionAndRedirect('/profile');
+            }
+        });
         socket.on('voice_command', function(data) {
             console.log('Голосовая команда получена от сервера:', data);
 
