@@ -1030,13 +1030,18 @@ def logout():
 def profile():
     if 'user_id' not in session:
         return redirect(url_for('login'))
+    
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
+    
+    # Получение данных пользователя
     cursor.execute(
         "SELECT username, description, relationship_status, avatar, city, gender, interests FROM users WHERE id = ?",
         (user_id,))
     user = cursor.fetchone()
+    
+    # Получение постов пользователя
     cursor.execute("""
         SELECT posts.id, posts.content, posts.created_at, users.username, posts.image,
                (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id AND reaction = 'like') AS likes,
@@ -1055,6 +1060,8 @@ def profile():
         ORDER BY posts.created_at DESC
     """, (user_id, user_id))
     posts_raw = cursor.fetchall()
+    
+    # Обработка постов
     posts = []
     for post in posts_raw:
         latest_comment = json.loads(post[8])[0] if post[8] and json.loads(post[8]) else None
@@ -1070,19 +1077,28 @@ def profile():
             'latest_comment': latest_comment,
             'emotion': post[9]
         })
+    
+    # Получение друзей
     cursor.execute("""
         SELECT users.username, users.id FROM friends 
         JOIN users ON friends.friend_id = users.id
         WHERE friends.user_id = ? AND friends.status = 'accepted'
     """, (user_id,))
     friends = cursor.fetchall()
+    
     cities = ["Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань", "Нижний Новгород", "Челябинск",
               "Самара", "Омск", "Ростов-на-Дону"]
+    
+    # СОЗДАЕМ ФОРМУ ДЛЯ CSRF ТОКЕНА
+    form = AddFriendForm()  # Создаем экземпляр формы
+    
+    # Обработка POST запроса
     if request.method == 'POST':
-        csrf_token = request.form.get('csrf_token')
-        if not csrf_token:
-            logger.error("CSRF token missing in request")
-            return jsonify({'status': 'error', 'message': 'CSRF token missing'}), 400
+        # Проверка CSRF токена с использованием формы
+        if not form.validate_on_submit():
+            logger.error("CSRF validation failed")
+            return jsonify({'status': 'error', 'message': 'CSRF validation failed'}), 400
+            
         description = request.form.get('description')
         relationship_status = request.form.get('relationship_status')
         city = request.form.get('city')
@@ -1090,19 +1106,25 @@ def profile():
         interests = request.form.get('interests')
         avatar = request.files.get('avatar')
         avatar_filename = user[3]
+        
         if avatar and allowed_file(avatar.filename):
             filename = secure_filename(avatar.filename)
             avatar_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             avatar.save(avatar_path)
             avatar_filename = filename
+            
         cursor.execute(
             "UPDATE users SET description = ?, relationship_status = ?, avatar = ?, city = ?, gender = ?, interests = ? WHERE id = ?",
             (description, relationship_status, avatar_filename, city, gender, interests, user_id))
         conn.commit()
         flash('Profile updated successfully', 'success')
+        
+        conn.close()
         return jsonify({'status': 'success', 'avatar': f'/static/avatars/{avatar_filename}'})
+    
     conn.close()
-    return render_template('profile.html', user=user, posts=posts, friends=friends, cities=cities)
+    # ВАЖНО: передаем form в шаблон
+    return render_template('profile.html', user=user, posts=posts, friends=friends, cities=cities, form=form)
 
 
 @app.route('/like_post/<int:post_id>', methods=['POST'])
