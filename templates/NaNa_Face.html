@@ -582,6 +582,7 @@
     </div>
 
     <script>
+        
         const socket = io();
         const video = document.getElementById('video');
         const emotionText = document.getElementById('emotion');
@@ -613,6 +614,7 @@
         const gestureRock = document.getElementById('gesture-rock');
 
         let stream = null;
+        let currentUserId = null;
         let frameInterval = null;
         let recognition = null;
         let isRecognizing = false;
