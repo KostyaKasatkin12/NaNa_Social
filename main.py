@@ -1035,7 +1035,7 @@ def logout():
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
     if 'user_id' not in session:
-        return redirect(url_for('profile'))
+        return redirect(url_for('login'))
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
