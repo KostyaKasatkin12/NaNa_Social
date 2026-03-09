@@ -192,6 +192,36 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .animate-slideIn {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        .animate-slideOut {
+            animation: slideOut 0.3s ease-in forwards;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen font-poppins text-gray-800 dark:text-gray-200 transition-colors duration-300">
@@ -265,6 +295,18 @@
                             <div>
                                 <h4 class="font-semibold text-gray-800 dark:text-gray-200">Voice Commands</h4>
                                 <p class="text-sm text-gray-600 dark:text-gray-400">Enable speech recognition and speak</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start gap-3 p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 flex items-center justify-center text-white text-sm font-bold">
+                                5
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-gray-200">Voice Commands List</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    Say: "открыть профиль", "друзья", "выйти", "домой", "создать пост"
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -497,6 +539,48 @@
         </div>
     </div>
 
+    <!-- Voice Command Dialog Modal -->
+    <div id="voiceCommandDialog" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            <div class="flex items-center justify-center mb-6">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl">
+                    <i class="fas fa-microphone-alt"></i>
+                </div>
+            </div>
+            <h3 class="text-2xl font-bold text-center text-gray-800 dark:text-gray-100 mb-2">
+                Голосовая команда
+            </h3>
+            <div id="commandText" class="text-center text-gray-600 dark:text-gray-300 mb-4 italic">
+                "открыть профиль"
+            </div>
+            <p id="voiceCommandMessage" class="text-center text-gray-600 dark:text-gray-400 mb-6"></p>
+            <div class="flex gap-4">
+                <button id="voiceCommandYes"
+                        class="flex-1 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold hover:shadow transition flex items-center justify-center gap-2">
+                    <i class="fas fa-check"></i>
+                    Да
+                </button>
+                <button id="voiceCommandNo"
+                        class="flex-1 py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:border-gray-400 dark:hover:border-gray-500 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-times"></i>
+                    Нет
+                </button>
+            </div>
+            <div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                Автоподтверждение через 5 секунд
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Action Toast -->
+    <div id="quickActionToast" class="fixed bottom-4 right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 hidden z-50">
+        <i class="fas fa-check-circle text-xl"></i>
+        <div>
+            <p class="font-semibold">Действие выполнено!</p>
+            <p class="text-sm opacity-90" id="toastMessage"></p>
+        </div>
+    </div>
+
     <script>
         const socket = io();
         const video = document.getElementById('video');
@@ -514,6 +598,15 @@
         const spidermanNo = document.getElementById('spidermanNo');
         const cameraStatus = document.getElementById('camera-status');
 
+        // Элементы для голосовых команд
+        const voiceCommandDialog = document.getElementById('voiceCommandDialog');
+        const voiceCommandMessage = document.getElementById('voiceCommandMessage');
+        const commandText = document.getElementById('commandText');
+        const voiceCommandYes = document.getElementById('voiceCommandYes');
+        const voiceCommandNo = document.getElementById('voiceCommandNo');
+        const quickActionToast = document.getElementById('quickActionToast');
+        const toastMessage = document.getElementById('toastMessage');
+
         // Gesture indicators
         const gestureFist = document.getElementById('gesture-fist');
         const gestureVictory = document.getElementById('gesture-victory');
@@ -524,6 +617,8 @@
         let recognition = null;
         let isRecognizing = false;
         let finalTranscript = '';
+        let currentVoiceCommand = null;
+        let autoConfirmTimer = null;
 
         function updateEmotionDisplay(emotionName, confidence) {
             emotionText.textContent = emotionName;
@@ -568,6 +663,102 @@
             return true;
         }
 
+        // Показать тост с сообщением
+        function showToast(message) {
+            toastMessage.textContent = message;
+            quickActionToast.classList.remove('hidden');
+            quickActionToast.classList.add('animate-slideIn');
+
+            setTimeout(() => {
+                quickActionToast.classList.remove('animate-slideIn');
+                quickActionToast.classList.add('animate-slideOut');
+
+                setTimeout(() => {
+                    quickActionToast.classList.add('hidden');
+                    quickActionToast.classList.remove('animate-slideOut');
+                }, 500);
+            }, 3000);
+        }
+
+        // Показать диалог голосовой команды
+        function showVoiceCommandDialog(commandType, message, text) {
+            currentVoiceCommand = commandType;
+            voiceCommandMessage.textContent = message;
+            commandText.textContent = `"${text}"`;
+            voiceCommandDialog.classList.remove('hidden');
+
+            // Автоподтверждение через 5 секунд
+            if (autoConfirmTimer) clearTimeout(autoConfirmTimer);
+            autoConfirmTimer = setTimeout(() => {
+                if (!voiceCommandDialog.classList.contains('hidden')) {
+                    voiceCommandYes.click();
+                }
+            }, 5000);
+        }
+
+        // Скрыть диалог голосовой команды
+        function hideVoiceCommandDialog() {
+            voiceCommandDialog.classList.add('hidden');
+            currentVoiceCommand = null;
+            if (autoConfirmTimer) {
+                clearTimeout(autoConfirmTimer);
+                autoConfirmTimer = null;
+            }
+        }
+
+        // Функция обработки голосовых команд
+        function handleVoiceCommand(commandType) {
+            switch(commandType) {
+                case 'open_profile':
+                    stopCamera();
+                    showToast('Переход в профиль...');
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("profile") }}';
+                    }, 1000);
+                    break;
+
+                case 'open_friends':
+                    stopCamera();
+                    showToast('Открываю список друзей...');
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("face_chat") }}';
+                    }, 1000);
+                    break;
+
+                case 'create_post':
+                    showToast('Создание нового поста...');
+                    // Здесь можно открыть модальное окно для создания поста
+                    // или перенаправить на страницу создания поста
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("home") }}';
+                    }, 1000);
+                    break;
+
+                case 'logout':
+                    showToast('Выход из системы...');
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("logout") }}';
+                    }, 1500);
+                    break;
+
+                case 'go_home':
+                    stopCamera();
+                    showToast('Переход на главную...');
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("home") }}';
+                    }, 1000);
+                    break;
+
+                case 'help':
+                    showToast('Доступные команды: "открыть профиль", "друзья", "выйти", "домой", "создать пост"');
+                    break;
+
+                case 'take_photo':
+                    showToast('Покажите жестом "FIST" для фото');
+                    break;
+            }
+        }
+
         // Инициализация распознавания речи
         function initializeSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -588,10 +779,12 @@
 
             recognition.onresult = function(event) {
                 let interimTranscript = '';
+                let finalChunk = '';
 
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     const transcript = event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
+                        finalChunk += transcript + ' ';
                         finalTranscript += transcript + ' ';
                     } else {
                         interimTranscript += transcript;
@@ -605,9 +798,10 @@
                 }
 
                 speechResult.innerHTML = displayText || '<span class="text-gray-500">Speech not recognized</span>';
-
-                // Прокрутка к новому тексту
                 speechResult.scrollTop = speechResult.scrollHeight;
+
+                // Проверяем на команды локально (дополнительная проверка)
+                checkForCommandsLocally(finalChunk);
             };
 
             recognition.onerror = function(event) {
@@ -626,6 +820,27 @@
                     recognition.start();
                 }
             };
+        }
+
+        // Локальная проверка команд (для быстрого отклика)
+        function checkForCommandsLocally(text) {
+            const lowerText = text.toLowerCase().trim();
+
+            if (lowerText.includes('открыть профиль') || lowerText.includes('профиль')) {
+                showVoiceCommandDialog('open_profile', 'Вы хотите перейти на страницу профиля?', text);
+            } else if (lowerText.includes('открыть друзей') || lowerText.includes('список друзей') || lowerText.includes('друзья')) {
+                showVoiceCommandDialog('open_friends', 'Вы хотите открыть список друзей?', text);
+            } else if (lowerText.includes('создать пост') || lowerText.includes('новый пост')) {
+                showVoiceCommandDialog('create_post', 'Вы хотите создать новый пост?', text);
+            } else if (lowerText.includes('выйти') || lowerText.includes('выход')) {
+                showVoiceCommandDialog('logout', 'Вы хотите выйти из системы?', text);
+            } else if (lowerText.includes('домой') || lowerText.includes('главная')) {
+                showVoiceCommandDialog('go_home', 'Переход на главную страницу', text);
+            } else if (lowerText.includes('помощь') || lowerText.includes('справка')) {
+                showVoiceCommandDialog('help', 'Доступные команды: "открыть профиль", "друзья", "выйти", "домой", "создать пост"', text);
+            } else if (lowerText.includes('сделать фото') || lowerText.includes('фото')) {
+                showVoiceCommandDialog('take_photo', 'Покажите жестом "FIST" для фото', text);
+            }
         }
 
         function startRecognition() {
@@ -723,6 +938,19 @@
             startBtn.addEventListener('click', startRecognition);
             stopBtn.addEventListener('click', stopRecognition);
             clearBtn.addEventListener('click', clearSpeechText);
+
+            // Обработчики для голосовых команд
+            voiceCommandYes.addEventListener('click', function() {
+                if (currentVoiceCommand) {
+                    handleVoiceCommand(currentVoiceCommand);
+                    hideVoiceCommandDialog();
+                }
+            });
+
+            voiceCommandNo.addEventListener('click', function() {
+                hideVoiceCommandDialog();
+                showToast('Команда отменена');
+            });
         });
 
         socket.on('connect', () => {
@@ -795,6 +1023,31 @@
             window.location.href = '{{ url_for("face_chat") }}';
         });
 
+        socket.on('voice_command', function(data) {
+            console.log('Voice command received from server:', data);
+
+            if (data.type && data.message) {
+                showVoiceCommandDialog(data.type, data.message, data.text || 'Команда');
+            }
+        });
+
+        socket.on('speech_result', function(data) {
+            if (data.error) {
+                console.error('Server speech recognition error:', data.error);
+                return;
+            }
+
+            if (data.success) {
+                // Если есть команда, она уже обработана в voice_command
+                if (!data.is_command) {
+                    // Добавляем серверный результат с пометкой
+                    const serverText = `[Server] ${data.text}`;
+                    speechResult.innerHTML += `<div class="mt-2 p-2 bg-blue-50 dark:bg-blue-900 rounded">${serverText}</div>`;
+                    speechResult.scrollTop = speechResult.scrollHeight;
+                }
+            }
+        });
+
         spidermanYes.addEventListener('click', () => {
             logWithTimestamp('Spiderman dialog: Yes clicked');
             spidermanDialog.classList.add('hidden');
@@ -827,21 +1080,6 @@
                 reader.readAsDataURL(audioBlob);
             });
         }
-
-        // Добавьте обработчик для ответов от сервера
-        socket.on('speech_result', function(data) {
-            if (data.error) {
-                console.error('Server speech recognition error:', data.error);
-                return;
-            }
-
-            if (data.success) {
-                // Добавляем серверный результат с пометкой
-                const serverText = `[Server] ${data.text}`;
-                speechResult.innerHTML += `<div class="mt-2 p-2 bg-blue-50 dark:bg-blue-900 rounded">${serverText}</div>`;
-                speechResult.scrollTop = speechResult.scrollHeight;
-            }
-        });
 
         // Initialize with default values
         updateEmotionDisplay('neutral', 0.5);
