@@ -1765,7 +1765,12 @@ def handle_frame(data):
                 return
 
         if gesture == "VICTORY":
-            emit('spiderman_gesture', {'message': 'Вы хотите перейти на страницу своего профиля?'})
+            logger.info(f"[Gesture] VICTORY detected for user {user_id}")
+            # Отправляем событие с user_id для подтверждения
+            emit('spiderman_gesture', {
+                'message': 'Вы хотите перейти на страницу своего профиля?',
+                'user_id': user_id
+            })
             return
 
         if gesture == "ROCK":
