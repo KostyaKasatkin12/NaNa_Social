@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Звонок {{ friend_username }} - НаНа</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #0a0a1a;
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+        }
+        .call-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #0f0f1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .call-container .placeholder {
+            text-align: center;
+            font-size: 2rem;
+            opacity: 0.5;
+        }
+        .call-container .placeholder .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        .btn-back {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-back:hover {
+            background: rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="call-container">
+        <a href="{{ url_for('home') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> На главную
+        </a>
+        <div class="placeholder">
+            <div class="icon">📞</div>
+            <h2>Звонок пользователю {{ friend_username }}</h2>
+            <p style="font-size: 1rem; opacity: 0.5; margin-top: 10px;">Функция звонков в разработке</p>
+        </div>
+    </div>
+</body>
+</html>
