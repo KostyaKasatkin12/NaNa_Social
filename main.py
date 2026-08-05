@@ -4,65 +4,65 @@ eventlet.monkey_patch()
 
 import os
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 import re
-from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, Response, \
-    send_from_directory
-from flask_socketio import SocketIO, emit, join_room
-from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, FileField, SelectField
-from wtforms.validators import DataRequired
-from flask_wtf.csrf import CSRFProtect
+import json
+import time
+import base64
+import logging
+import random
 import sqlite3
+from datetime import datetime, timedelta
+from threading import Lock
+from io import BytesIO
+import wave
+from collections import defaultdict
+from collections import Counter
+
+from flask import Flask, render_template, redirect, url_for, request, session, flash, jsonify, send_from_directory
+from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_wtf import FlaskForm, CSRFProtect
+from wtforms import StringField, PasswordField, SubmitField, FileField, SelectField, TextAreaField, BooleanField
+from wtforms.validators import DataRequired, Optional, Length, EqualTo
+
 from forms import LoginForm, RegisterForm, StoryForm, AddFriendForm, SearchForm
+
 import cv2
+import numpy as np
 from fer import FER
 import mediapipe as mp
-import numpy as np
-import base64
-import time
-import json
-import logging
 import pymorphy3 as pymorphy
+from textblob import TextBlob
 import google.generativeai as genai
 from langdetect import detect, DetectorFactory
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
 import speech_recognition as sr
-from io import BytesIO
-import wave
-from collections import defaultdict
-from threading import Lock
 
-# Initialize Flask and SocketIO
+# ==================== ИНИЦИАЛИЗАЦИЯ ====================
+
 app = Flask(__name__)
-app.secret_key = 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5'  # Replace with a secure key
+app.secret_key = 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5'
+
 app.config['UPLOAD_FOLDER'] = 'static/avatars'
 app.config['STORIES_FOLDER'] = 'static/stories'
 app.config['AUDIO_FOLDER'] = 'static/audio'
-# Добавьте эти настройки после создания app
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = False  # Для HTTP в Colab
+app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 csrf = CSRFProtect(app)
 
-# Configure directories
-UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
-STORIES_FOLDER = app.config['STORIES_FOLDER']
-AUDIO_FOLDER = app.config['AUDIO_FOLDER']
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi', 'wav'}
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-if not os.path.exists(STORIES_FOLDER):
-    os.makedirs(STORIES_FOLDER)
-if not os.path.exists(AUDIO_FOLDER):
-    os.makedirs(AUDIO_FOLDER)
+for folder in [app.config['UPLOAD_FOLDER'], app.config['STORIES_FOLDER'], app.config['AUDIO_FOLDER']]:
+    os.makedirs(folder, exist_ok=True)
 
-# Initialize emotion and hand detection
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi', 'wav'}
+
+# ==================== AI ИНИЦИАЛИЗАЦИЯ ====================
+
 emotion_detector = FER(mtcnn=True)
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
@@ -72,14 +72,46 @@ hands = mp_hands.Hands(
     min_tracking_confidence=0.8
 )
 
-# Initialize speech recognition
 recognizer = sr.Recognizer()
+DetectorFactory.seed = 0
+morph = pymorphy.MorphAnalyzer()
 
-# Глобальные переменные для отслеживания онлайн-статуса
+genai.configure(api_key="AIzaSyBNR9ULDDEAJ2iW_0b6GgT9lfSOqs-dwMw")
+gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+
+# ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+
 online_users = set()
 online_lock = Lock()
 
-# Define gestures based on finger states (0 = down, 1 = up)
+user_locations = {}
+user_mood_history = {}
+mood_cache = {}
+city_mood_data = {}
+user_city = {}
+
+# ==================== АНОНИМНЫЙ ЧАТ ПО НАСТРОЕНИЯМ ====================
+
+MOOD_ROOMS = {
+    'happy': {'name': '😊 Счастливые', 'emoji': '😊', 'color': '#34d399', 'desc': 'Делимся радостью и позитивом'},
+    'sad': {'name': '😢 Грустные', 'emoji': '😢', 'color': '#60a5fa', 'desc': 'Поддержим друг друга в трудный момент'},
+    'angry': {'name': '😡 Злые', 'emoji': '😡', 'color': '#f87171', 'desc': 'Выплесните гнев в безопасной обстановке'},
+    'anxious': {'name': '😰 Тревожные', 'emoji': '😰', 'color': '#fbbf24', 'desc': 'Поделитесь тревогами и страхами'},
+    'lonely': {'name': '🥺 Одинокие', 'emoji': '🥺', 'color': '#a78bfa', 'desc': 'Вы не одни, мы с вами'},
+    'hopeful': {'name': '🌟 Надеющиеся', 'emoji': '🌟', 'color': '#34d399', 'desc': 'Вместе верим в лучшее'},
+    'tired': {'name': '😴 Уставшие', 'emoji': '😴', 'color': '#9ca3af', 'desc': 'Отдыхаем и восстанавливаемся'},
+    'love': {'name': '❤️ Влюблённые', 'emoji': '❤️', 'color': '#f472b6', 'desc': 'Делимся теплотой и нежностью'},
+    'grateful': {'name': '🙏 Благодарные', 'emoji': '🙏', 'color': '#fbbf24', 'desc': 'Ценим моменты и друг друга'},
+    'confused': {'name': '🤔 Растерянные', 'emoji': '🤔', 'color': '#6b7280', 'desc': 'Ищем ответы вместе'},
+    'support': {'name': '🤗 Поддержка', 'emoji': '🤗', 'color': '#10b981', 'desc': 'Пришли поддержать других'},
+    'help': {'name': '🆘 Нужна помощь', 'emoji': '🆘', 'color': '#ef4444', 'desc': 'Срочная эмоциональная поддержка'}
+}
+
+mood_chat_rooms = {}
+mood_chat_users = {}
+user_current_mood = {}
+user_mood_timestamp = {}
+
 GESTURES = {
     (0, 0, 0, 0, 0): "FIST",
     (1, 1, 1, 1, 1): "OPEN_HAND",
@@ -87,13 +119,10 @@ GESTURES = {
     (0, 1, 0, 0, 1): "ROCK",
     (1, 0, 0, 0, 0): "THUMBS_UP",
     (0, 0, 0, 0, 1): "THUMBS_DOWN",
-    (0, 1, 0, 0, 0): "POINTING",
-    (0, 0, 0, 1, 0): "POINTING",
     (0, 0, 1, 0, 0): "MIDDLE_FINGER",
     (1, 1, 0, 0, 1): "SPIDERMAN"
 }
 
-# Define finger colors for drawing
 finger_colors = {
     "thumb": (255, 0, 0),
     "index": (0, 255, 0),
@@ -102,38 +131,71 @@ finger_colors = {
     "pinky": (255, 255, 0)
 }
 
-# Set up logging
+MOOD_EMOJIS = {
+    'very_positive': '🥳', 'positive': '😊', 'neutral': '😐',
+    'negative': '😔', 'very_negative': '😢', 'angry': '😡',
+    'surprised': '😮', 'fearful': '😨', 'joyful': '😄', 'sad': '😭'
+}
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Ensure consistent language detection results
-DetectorFactory.seed = 0
 
-# Initialize language tools
-morph = pymorphy.MorphAnalyzer()
+# ==================== ФУНКЦИИ ДЛЯ РАБОТЫ С НАСТРОЕНИЯМИ ====================
 
-# Configure Gemini AI
-genai.configure(api_key="AIzaSyBNR9ULDDEAJ2iW_0b6GgT9lfSOqs-dwMw")
-gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+def set_user_mood(user_id, mood_key):
+    """Установить настроение пользователя"""
+    user_current_mood[user_id] = mood_key
+    user_mood_timestamp[user_id] = datetime.now().isoformat()
+
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO mood_history (user_id, mood, created_at) 
+        VALUES (?, ?, ?)
+    """, (user_id, mood_key, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+    return user_current_mood[user_id]
 
 
-# Database initialization
+def get_user_mood(user_id):
+    """Получить текущее настроение пользователя"""
+    return user_current_mood.get(user_id)
+
+
+def get_user_mood_with_emoji(user_id):
+    """Получить настроение пользователя с эмодзи"""
+    mood = user_current_mood.get(user_id)
+    if mood and mood in MOOD_ROOMS:
+        return {
+            'key': mood,
+            'name': MOOD_ROOMS[mood]['name'],
+            'emoji': MOOD_ROOMS[mood]['emoji'],
+            'color': MOOD_ROOMS[mood]['color']
+        }
+    return None
+
+
+# ==================== ФУНКЦИИ БАЗЫ ДАННЫХ ====================
+
 def init_db():
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
 
-    # Create tables
     tables = [
         '''CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
+            username TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
             description TEXT,
             relationship_status TEXT DEFAULT 'не интересуюсь',
             avatar TEXT,
             city TEXT,
             gender TEXT,
-            interests TEXT
+            interests TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''',
         '''CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -142,6 +204,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             image TEXT,
             emotion TEXT,
+            mood TEXT,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )''',
         '''CREATE TABLE IF NOT EXISTS friends (
@@ -174,7 +237,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             content TEXT NOT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''',
         '''CREATE TABLE IF NOT EXISTS post_reactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -210,6 +273,28 @@ def init_db():
             recognized_text TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id)
+        )''',
+        '''CREATE TABLE IF NOT EXISTS anonymous_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''',
+        '''CREATE TABLE IF NOT EXISTS mood_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            mood TEXT NOT NULL,
+            score REAL,
+            text TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )''',
+        '''CREATE TABLE IF NOT EXISTS city_moods (
+            city_name TEXT PRIMARY KEY,
+            mood TEXT NOT NULL,
+            score REAL DEFAULT 0,
+            count INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )'''
     ]
 
@@ -220,89 +305,115 @@ def init_db():
     conn.close()
 
 
-def process_voice_command(text):
-    """
-    Обрабатывает голосовые команды и возвращает тип действия
-    """
+def migrate_database():
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+
+    cursor.execute("PRAGMA table_info(posts)")
+    columns = [col[1] for col in cursor.fetchall()]
+
+    if 'mood' not in columns:
+        try:
+            cursor.execute("ALTER TABLE posts ADD COLUMN mood TEXT")
+            print("[OK] Добавлена колонка 'mood' в таблицу posts")
+        except sqlite3.OperationalError as e:
+            print(f"[WARN] Ошибка добавления колонки mood: {e}")
+
+    conn.commit()
+    conn.close()
+    print("[OK] Миграция базы данных завершена")
+
+
+def create_test_user():
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM users WHERE username = 'admin'")
+    if not cursor.fetchone():
+        hashed_password = generate_password_hash('admin123')
+        cursor.execute(
+            "INSERT INTO users (username, password, description, city) VALUES (?, ?, ?, ?)",
+            ('admin', hashed_password, 'Администратор', 'Москва')
+        )
+        conn.commit()
+        print("[OK] Создан администратор: admin / admin123")
+
+    conn.close()
+
+
+# ==================== ФУНКЦИИ ДЛЯ НАСТРОЕНИЯ ====================
+
+def analyze_mood_text(text):
     if not text or not isinstance(text, str):
-        return None
+        return {'mood': 'neutral', 'score': 0, 'emoji': '😐', 'label': 'Нейтральное'}
 
-    text = text.lower().strip()
-
-    # Команда для открытия профиля
-    if any(cmd in text for cmd in
-           ['открыть профиль', 'профиль', 'мой профиль', 'показать профиль', 'перейти в профиль']):
-        return 'open_profile'
-
-    # Команда для открытия списка друзей
-    elif any(cmd in text for cmd in ['открыть друзей', 'список друзей', 'мои друзья', 'друзья', 'показать друзей']):
-        return 'open_friends'
-
-    # Команда для создания поста
-    elif any(cmd in text for cmd in ['создать пост', 'новый пост', 'написать пост', 'добавить пост']):
-        return 'create_post'
-
-    # Команда для выхода
-    elif any(cmd in text for cmd in ['выйти', 'выход', 'разлогиниться', 'logout', 'выйти из системы']):
-        return 'logout'
-
-    # Команда для возврата домой
-    elif any(cmd in text for cmd in ['домой', 'на главную', 'главная', 'home', 'главная страница']):
-        return 'go_home'
-
-    # Команда для помощи
-    elif any(cmd in text for cmd in ['помощь', 'справка', 'что ты умеешь', 'команды']):
-        return 'help'
-
-    # Команда для фото
-    elif any(cmd in text for cmd in ['сделать фото', 'сфотографировать', 'фото', 'снимок']):
-        return 'take_photo'
-
-    return None
-
-
-def process_audio(audio_data, sample_rate=16000):
-    """
-    Обработка аудио данных и распознавание речи
-    """
     try:
-        # Создаем временный WAV файл в памяти
-        audio_buffer = BytesIO()
+        blob = TextBlob(text)
+        polarity = blob.sentiment.polarity
 
-        # Создаем WAV файл
-        with wave.open(audio_buffer, 'wb') as wav_file:
-            wav_file.setnchannels(1)  # моно
-            wav_file.setsampwidth(2)  # 16-bit
-            wav_file.setframerate(sample_rate)
-            wav_file.writeframes(audio_data)
+        if polarity > 0.5:
+            mood, label, emoji = 'very_positive', 'Очень позитивное', '🥳'
+        elif polarity > 0.1:
+            mood, label, emoji = 'positive', 'Позитивное', '😊'
+        elif polarity < -0.5:
+            mood, label, emoji = 'very_negative', 'Очень негативное', '😢'
+        elif polarity < -0.1:
+            mood, label, emoji = 'negative', 'Негативное', '😔'
+        else:
+            mood, label, emoji = 'neutral', 'Нейтральное', '😐'
 
-        # Перемещаем указатель в начало буфера
-        audio_buffer.seek(0)
+        return {'mood': mood, 'score': polarity, 'emoji': emoji, 'label': label}
+    except:
+        return {'mood': 'neutral', 'score': 0, 'emoji': '😐', 'label': 'Нейтральное'}
 
-        # Используем speech_recognition для распознавания
-        with sr.AudioFile(audio_buffer) as source:
-            # Adjust for ambient noise and record
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            audio = recognizer.record(source)
 
-            # Пытаемся распознать речь на русском языке
-            text = recognizer.recognize_google(audio, language='ru-RU')
+# ==================== ФУНКЦИИ ДЛЯ ЧАТА ПО НАСТРОЕНИЯМ (ПОЛНАЯ АНОНИМНОСТЬ) ====================
 
-            # Проверяем, является ли текст командой
-            command = process_voice_command(text)
+def get_mood_room(mood):
+    if mood not in mood_chat_rooms:
+        mood_chat_rooms[mood] = {
+            'users': set(),
+            'messages': [],
+            'created_at': datetime.now().isoformat()
+        }
+    return mood_chat_rooms[mood]
 
-            return text, True, command
 
-    except sr.UnknownValueError:
-        logger.warning("Speech recognition could not understand audio")
-        return "Речь не распознана", False, None
-    except sr.RequestError as e:
-        logger.error(f"Could not request results from Google Speech Recognition service: {e}")
-        return f"Ошибка сервиса распознавания: {e}", False, None
-    except Exception as e:
-        logger.error(f"Error processing audio: {e}")
-        return f"Ошибка обработки аудио: {e}", False, None
+def add_user_to_mood_room(user_id, mood):
+    """Добавить пользователя в комнату (анонимно, без имени)"""
+    if mood not in mood_chat_rooms:
+        mood_chat_rooms[mood] = {
+            'users': set(),
+            'messages': [],
+            'created_at': datetime.now().isoformat()
+        }
+    mood_chat_rooms[mood]['users'].add(user_id)
+    mood_chat_users[user_id] = mood
+    return mood_chat_rooms[mood]
 
+
+def remove_user_from_mood_room(user_id):
+    if user_id in mood_chat_users:
+        mood = mood_chat_users[user_id]
+        if mood in mood_chat_rooms:
+            mood_chat_rooms[mood]['users'].discard(user_id)
+        del mood_chat_users[user_id]
+
+
+def save_mood_message(mood, message, user_id):
+    """Сохранить сообщение в комнате (полностью анонимно)"""
+    room = get_mood_room(mood)
+    room['messages'].append({
+        'user_id': user_id,
+        'message': message,
+        'created_at': datetime.now().isoformat()
+    })
+    if len(room['messages']) > 100:
+        room['messages'] = room['messages'][-100:]
+    return room['messages'][-1]
+
+
+# ==================== ОБЫЧНЫЕ ФУНКЦИИ ====================
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -323,9 +434,7 @@ def detect_gesture(landmarks):
 def process_emotions(frame):
     try:
         if frame is None or frame.size == 0:
-            logger.error("[Emotion] Input frame is invalid")
             return None, 0.0, (0, 0, 0, 0)
-        logger.info(f"[Emotion] Processing frame of shape: {frame.shape}")
         resized_frame = cv2.resize(frame, (64, 64))
         emotions = emotion_detector.detect_emotions(resized_frame)
         if emotions:
@@ -334,10 +443,7 @@ def process_emotions(frame):
             scale_x = frame.shape[1] / 64
             scale_y = frame.shape[0] / 64
             x, y, w, h = int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)
-            logger.info(f"[Emotion] Detected: {emotion} ({score:.2f}) at box ({x}, {y}, {w}, {h})")
             return emotion, score, (x, y, w, h)
-        else:
-            logger.info("[Emotion] No faces detected")
     except Exception as e:
         logger.error(f"[Emotion] Error: {e}")
     return None, 0.0, (0, 0, 0, 0)
@@ -363,15 +469,53 @@ def draw_finger_tips(frame, landmarks, image_width, image_height):
         cv2.circle(frame, (x, y), 10, color, -1)
 
 
+def process_voice_command(text):
+    if not text or not isinstance(text, str):
+        return None
+    text = text.lower().strip()
+
+    commands = {
+        'открыть профиль': 'open_profile', 'профиль': 'open_profile',
+        'открыть друзей': 'open_friends', 'друзья': 'open_friends',
+        'создать пост': 'create_post', 'выйти': 'logout',
+        'домой': 'go_home', 'помощь': 'help',
+        'сделать фото': 'take_photo', 'анонимный чат': 'anonymous_chat',
+        'карта': 'mood_map', 'настроение': 'mood_chat'
+    }
+
+    for cmd, action in commands.items():
+        if cmd in text:
+            return action
+    return None
+
+
+def process_audio(audio_data, sample_rate=16000):
+    try:
+        audio_buffer = BytesIO()
+        with wave.open(audio_buffer, 'wb') as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(audio_data)
+        audio_buffer.seek(0)
+
+        with sr.AudioFile(audio_buffer) as source:
+            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            audio = recognizer.record(source)
+            text = recognizer.recognize_google(audio, language='ru-RU')
+            command = process_voice_command(text)
+            return text, True, command
+    except sr.UnknownValueError:
+        return "Речь не распознана", False, None
+    except Exception as e:
+        logger.error(f"Audio processing error: {e}")
+        return f"Ошибка: {e}", False, None
+
+
 def send_notifications_real_time(user_id, notification_content=None):
-    """
-    Улучшенная функция отправки уведомлений в реальном времени
-    """
     try:
         conn = sqlite3.connect('nana.db')
         cursor = conn.cursor()
-
-        # Если передано конкретное уведомление, сохраняем его
         if notification_content:
             cursor.execute(
                 "INSERT INTO notifications (user_id, content) VALUES (?, ?)",
@@ -379,108 +523,47 @@ def send_notifications_real_time(user_id, notification_content=None):
             )
             conn.commit()
 
-        # Получаем все актуальные уведомления
         cursor.execute("""
-            SELECT 
-                n.content, 
-                n.created_at,
-                CASE 
-                    WHEN n.content LIKE '%sent you%message%' THEN 'message'
-                    WHEN n.content LIKE '%friend request%' THEN 'friend_request'
-                    WHEN n.content LIKE '%liked your post%' THEN 'like'
-                    WHEN n.content LIKE '%commented on your post%' THEN 'comment'
-                    WHEN n.content LIKE '%accepted your friend request%' THEN 'friend_accept'
-                    ELSE 'system'
-                END as type
-            FROM notifications n
-            WHERE n.user_id = ? 
-            ORDER BY n.created_at DESC 
-            LIMIT 20
+            SELECT content, created_at FROM notifications 
+            WHERE user_id = ? ORDER BY created_at DESC LIMIT 10
         """, (user_id,))
-
         notifications = cursor.fetchall()
 
-        # Получаем количество непрочитанных сообщений
-        cursor.execute("""
-            SELECT COUNT(*) as unread_messages
-            FROM chat_messages cm
-            JOIN chats c ON cm.chat_id = c.id
-            WHERE (c.user1_id = ? OR c.user2_id = ?)
-            AND cm.sender_id != ?
-            AND cm.is_read = 0
-        """, (user_id, user_id, user_id))
-
-        unread_messages = cursor.fetchone()[0] or 0
-
-        # Получаем количество заявок в друзья
-        cursor.execute("""
-            SELECT COUNT(*) as pending_requests
-            FROM friends f
-            WHERE f.friend_id = ? 
-            AND f.status = 'pending'
-        """, (user_id,))
-
-        pending_requests = cursor.fetchone()[0] or 0
-
-        conn.close()
-
-        # Подготавливаем данные для отправки
-        notification_data = {
-            'user_id': user_id,
-            'notifications': [
-                {
-                    'content': n[0],
-                    'created_at': n[1],
-                    'type': n[2]
-                } for n in notifications
-            ],
-            'unread_count': len(notifications),
-            'unread_messages': unread_messages,
-            'pending_requests': pending_requests,
-            'timestamp': datetime.now().isoformat()
-        }
-
-        # Проверяем, онлайн ли пользователь
         with online_lock:
             is_online = user_id in online_users
 
-        # Отправляем только если пользователь онлайн
         if is_online:
-            logger.info(f"Sending real-time notifications to user_id {user_id}")
-            socketio.emit('update_notifications', notification_data, room=str(user_id))
+            socketio.emit('update_notifications', {
+                'user_id': user_id,
+                'notifications': [{'content': n[0], 'created_at': n[1]} for n in notifications],
+                'unread_count': len(notifications),
+                'timestamp': datetime.now().isoformat()
+            }, room=str(user_id))
 
-        return notification_data
-
+        conn.close()
+        return notifications
     except Exception as e:
         logger.error(f"Error in send_notifications_real_time: {e}")
         return None
 
 
-# Routes
+# ==================== МАРШРУТЫ ====================
+
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/x-icon')
 
+
 @app.route('/check_session', methods=['GET'])
 def check_session():
-    """Проверяет, активна ли сессия пользователя"""
     if 'user_id' in session:
-        return jsonify({
-            'logged_in': True,
-            'user_id': session['user_id']
-        })
-    else:
-        return jsonify({
-            'logged_in': False,
-            'message': 'No active session'
-        })
+        return jsonify({'logged_in': True, 'user_id': session['user_id']})
+    return jsonify({'logged_in': False, 'message': 'No active session'})
 
 
-@app.route('/speech_history')
-def speech_history():
-    """
-    Страница с историей распознанной речи
-    """
+@app.route('/call/<int:friend_id>')
+def call_page(friend_id):
+    """Страница для звонка"""
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
@@ -488,18 +571,57 @@ def speech_history():
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
 
-    cursor.execute('''
-        SELECT recognized_text, created_at 
-        FROM speech_recognition 
-        WHERE user_id = ? 
-        ORDER BY created_at DESC 
-        LIMIT 50
-    ''', (user_id,))
+    # Проверяем, что пользователь является другом
+    cursor.execute("""
+        SELECT COUNT(*) FROM friends 
+        WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?))
+        AND status = 'accepted'
+    """, (user_id, friend_id, friend_id, user_id))
 
-    speech_history = cursor.fetchall()
+    if cursor.fetchone()[0] == 0:
+        conn.close()
+        flash('Этот пользователь не в вашем списке друзей', 'error')
+        return redirect(url_for('home'))
+
+    # Получаем информацию о друге
+    cursor.execute("SELECT id, username FROM users WHERE id = ?", (friend_id,))
+    friend = cursor.fetchone()
     conn.close()
 
-    return render_template('speech_history.html', speech_history=speech_history)
+    if not friend:
+        flash('Пользователь не найден', 'error')
+        return redirect(url_for('home'))
+
+    return render_template('call.html',
+                           friend_id=friend_id,
+                           friend_username=friend[1],
+                           user_id=user_id)
+
+@app.route('/mood_chat')
+def mood_chat():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    current_mood = get_user_mood(user_id)
+    current_mood_data = get_user_mood_with_emoji(user_id) if current_mood else None
+
+    room_stats = {}
+    for mood, room in mood_chat_rooms.items():
+        room_stats[mood] = len(room['users'])
+
+    return render_template('mood_chat.html',
+                           moods=MOOD_ROOMS,
+                           current_mood=current_mood,
+                           current_mood_data=current_mood_data,
+                           room_stats=room_stats)
+
+
+@app.route('/mood_map')
+def mood_map():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('mood_map.html')
 
 
 @app.route('/', methods=['GET'])
@@ -511,24 +633,19 @@ def home():
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+    cursor.execute("SELECT username, city FROM users WHERE id = ?", (user_id,))
     user = cursor.fetchone()
     if not user:
         logger.error(f"No user found for user_id: {user_id}, clearing session")
         session.pop('user_id', None)
         return redirect(url_for('login'))
+
     cursor.execute("""
         SELECT posts.id, posts.content, posts.created_at, users.username, posts.image,
                (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id AND reaction = 'like') AS likes,
                (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id AND reaction = 'dislike') AS dislikes,
                (SELECT reaction FROM post_reactions WHERE post_id = posts.id AND user_id = ?) AS user_reaction,
-               (SELECT json_group_array(json_array(c.content, c.created_at, u2.username))
-                FROM post_comments c
-                JOIN users u2 ON c.user_id = u2.id
-                WHERE c.post_id = posts.id
-                ORDER BY c.created_at DESC
-                LIMIT 1) AS latest_comment,
-               posts.emotion
+               posts.emotion, posts.mood
         FROM posts 
         JOIN users ON posts.user_id = users.id 
         ORDER BY posts.created_at DESC
@@ -536,20 +653,33 @@ def home():
     posts_raw = cursor.fetchall()
     posts = []
     for post in posts_raw:
-        latest_comment = json.loads(post[8])[0] if post[8] and json.loads(post[8]) else None
-        posts.append(post[:8] + (latest_comment, post[9]))
+        posts.append({
+            'id': post[0],
+            'content': post[1],
+            'created_at': post[2],
+            'username': post[3],
+            'image': post[4],
+            'likes': post[5],
+            'dislikes': post[6],
+            'user_reaction': post[7],
+            'emotion': post[8],
+            'mood': post[9]
+        })
+
     cursor.execute("""
         SELECT users.username, users.id FROM friends 
         JOIN users ON friends.friend_id = users.id
         WHERE friends.user_id = ? AND friends.status = 'accepted'
     """, (user_id,))
     friends = cursor.fetchall()
+
     cursor.execute("""
         SELECT users.id, users.username FROM friends 
         JOIN users ON friends.user_id = users.id
         WHERE friends.friend_id = ? AND friends.status = 'pending'
     """, (user_id,))
     friend_requests = cursor.fetchall()
+
     cursor.execute("""
         SELECT chats.id, users.username,
                (SELECT COUNT(*) FROM chat_messages 
@@ -561,29 +691,11 @@ def home():
         WHERE (chats.user1_id = ? OR chats.user2_id = ?) AND users.id != ?
     """, (user_id, user_id, user_id, user_id))
     chats = cursor.fetchall()
-    cursor.execute("""
-        SELECT users.username, 
-               (SELECT COUNT(*) FROM chat_messages 
-                WHERE chat_messages.chat_id = chats.id 
-                AND chat_messages.sender_id != ? 
-                AND chat_messages.is_read = 0) AS unread_count
-        FROM chats 
-        JOIN users ON (chats.user1_id = users.id OR chats.user2_id = users.id)
-        WHERE (chats.user1_id = ? OR chats.user2_id = ?) 
-        AND users.id != ?
-        AND (SELECT COUNT(*) FROM chat_messages 
-             WHERE chat_messages.chat_id = chats.id 
-             AND chat_messages.sender_id != ? 
-             AND chat_messages.is_read = 0) > 0
-    """, (user_id, user_id, user_id, user_id, user_id))
-    unread_notifications = cursor.fetchall()
-    notifications = [(f"{username} sent you {unread_count} message(s)", None) for username, unread_count in
-                     unread_notifications]
-    cursor.execute("SELECT content, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
-                   (user_id,))
-    notifications.extend(cursor.fetchall())
 
-    # Fetch active stories only from friends (valid for 24 hours)
+    cursor.execute("SELECT content, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 10",
+                   (user_id,))
+    notifications = cursor.fetchall()
+
     cursor.execute("""
         SELECT s.id, s.user_id, s.content, s.image, s.created_at, s.expires_at, s.views 
         FROM stories s
@@ -591,10 +703,12 @@ def home():
         WHERE f.user_id = ? AND f.status = 'accepted' AND s.expires_at > ?
     """, (user_id, datetime.now()))
     stories = cursor.fetchall()
+
     conn.close()
-    send_notifications_real_time(user_id)
+
     search_form = AddFriendForm()
     form = AddFriendForm()
+
     return render_template('home.html',
                            username=user[0],
                            posts=posts,
@@ -604,39 +718,119 @@ def home():
                            chats=chats,
                            search_form=search_form,
                            form=form,
-                           stories=stories)
+                           stories=stories,
+                           user_city=user[1] if len(user) > 1 else None)
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
         return redirect(url_for('home'))
+
     form = LoginForm()
+
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
+
         conn = sqlite3.connect('nana.db')
         cursor = conn.cursor()
         cursor.execute("SELECT id, password FROM users WHERE username = ?", (username,))
         user = cursor.fetchone()
         conn.close()
-        logger.info(f"Login attempt for username: {username}, user: {user}")
+
         if user and check_password_hash(user[1], password):
             session['user_id'] = user[0]
-            logger.info(f"User logged in: {username}, user_id: {user[0]}")
+            session['username'] = username
             return redirect(url_for('home'))
-        logger.warning(f"Invalid login attempt for username: {username}, user: {user}")
-        return render_template('login.html', form=form, error="Invalid username or password")
+        else:
+            return render_template('login.html', form=form, error="Неверное имя пользователя или пароль")
+
     return render_template('login.html', form=form)
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if 'user_id' in session:
+        return redirect(url_for('home'))
+
+    form = RegisterForm()
+
+    if request.method == 'POST':
+        if form.validate_on_submit():
+            username = form.username.data.strip()
+            password = form.password.data
+            confirm_password = form.confirm_password.data
+            description = form.description.data.strip() if form.description.data else ''
+            city = form.city.data.strip() if form.city.data else ''
+            gender = form.gender.data if form.gender.data else ''
+            interests = form.interests.data.strip() if form.interests.data else ''
+
+            if password != confirm_password:
+                return render_template('register.html', form=form, error="Пароли не совпадают")
+
+            conn = sqlite3.connect('nana.db')
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+            if cursor.fetchone():
+                conn.close()
+                return render_template('register.html', form=form, error="Пользователь с таким именем уже существует")
+
+            hashed_password = generate_password_hash(password)
+            cursor.execute(
+                """INSERT INTO users (username, password, description, city, gender, interests) 
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (username, hashed_password, description, city, gender, interests)
+            )
+            conn.commit()
+            conn.close()
+
+            flash('Регистрация успешна! Теперь вы можете войти.', 'success')
+            return redirect(url_for('login'))
+        else:
+            error_messages = []
+            for field, errors in form.errors.items():
+                for error in errors:
+                    error_messages.append(f"{field}: {error}")
+            return render_template('register.html', form=form, error="; ".join(error_messages))
+
+    return render_template('register.html', form=form)
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('login'))
+
+
+@app.route('/speech_history')
+def speech_history():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT recognized_text, created_at 
+        FROM speech_recognition 
+        WHERE user_id = ? ORDER BY created_at DESC LIMIT 50
+    ''', (user_id,))
+    speech_history = cursor.fetchall()
+    conn.close()
+    return render_template('speech_history.html', speech_history=speech_history)
 
 
 @app.route('/get_more_posts', methods=['GET'])
 def get_more_posts():
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+
     user_id = session['user_id']
     offset = request.args.get('offset', type=int, default=5)
     limit = 5
+
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
     cursor.execute("""
@@ -644,13 +838,7 @@ def get_more_posts():
                (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id AND reaction = 'like') AS likes,
                (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id AND reaction = 'dislike') AS dislikes,
                (SELECT reaction FROM post_reactions WHERE post_id = posts.id AND user_id = ?) AS user_reaction,
-               (SELECT json_group_array(json_array(c.content, c.created_at, u2.username))
-                FROM post_comments c
-                JOIN users u2 ON c.user_id = u2.id
-                WHERE c.post_id = posts.id
-                ORDER BY c.created_at DESC
-                LIMIT 1) AS latest_comment,
-               posts.emotion
+               posts.emotion, posts.mood
         FROM posts 
         JOIN users ON posts.user_id = users.id 
         ORDER BY posts.created_at DESC
@@ -659,7 +847,6 @@ def get_more_posts():
     posts_raw = cursor.fetchall()
     posts = []
     for post in posts_raw:
-        latest_comment = json.loads(post[8])[0] if post[8] and json.loads(post[8]) else None
         posts.append({
             'id': post[0],
             'content': post[1],
@@ -669,8 +856,8 @@ def get_more_posts():
             'likes': post[5],
             'dislikes': post[6],
             'user_reaction': post[7],
-            'latest_comment': latest_comment,
-            'emotion': post[9]
+            'emotion': post[8],
+            'mood': post[9]
         })
     conn.close()
     return jsonify({'status': 'success', 'posts': posts})
@@ -687,26 +874,15 @@ def face_detector():
 def face_chat():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    conn = sqlite3.connect('nana.db')
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT users.id, users.username 
-        FROM friends 
-        JOIN users ON friends.friend_id = users.id 
-        WHERE friends.user_id = ? AND friends.status = 'accepted'
-    """, (session['user_id'],))
-    friends = [{'id': row[0], 'username': row[1]} for row in cursor.fetchall()]
-    conn.close()
-    return render_template('Face_Chat.html', friends=friends)
+    return render_template('Face_Chat.html')
 
 
 @app.route('/friends', methods=['POST'])
 def get_friends():
     if 'user_id' not in session:
         return jsonify({'error': 'Not logged in'}), 401
+
     user_id = request.json.get('user_id', session['user_id'])
-    if not user_id:
-        return jsonify({'error': 'User ID required'}), 400
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
     cursor.execute("""
@@ -724,8 +900,10 @@ def get_friends():
 def search_user():
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
     username = request.form.get('username') if request.method == 'POST' else request.args.get('username')
     user_id = session['user_id']
+
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
     if username:
@@ -734,6 +912,7 @@ def search_user():
         users = cursor.fetchall()
     else:
         users = []
+
     cursor.execute("""
         SELECT users.id, users.username FROM friends 
         JOIN users ON friends.user_id = users.id
@@ -741,6 +920,7 @@ def search_user():
     """, (user_id,))
     friend_requests = [{'id': row[0], 'username': row[1]} for row in cursor.fetchall()]
     conn.close()
+
     form = AddFriendForm()
     return render_template('search_results.html', users=users, form=form, friend_requests=friend_requests)
 
@@ -749,6 +929,7 @@ def search_user():
 def add_friend(friend_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
     user_id = session['user_id']
     form = AddFriendForm()
     if form.validate_on_submit():
@@ -761,20 +942,13 @@ def add_friend(friend_id):
                                (user_id, friend_id))
                 cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
                 sender_username = cursor.fetchone()[0]
-
-                # Отправляем уведомление в реальном времени
                 send_notifications_real_time(friend_id, f"{sender_username} sent you a friend request")
-
                 conn.commit()
-                logger.info(f"Friend request sent to user {friend_id}")
 
                 socketio.emit('new_friend_request', {
                     'sender_id': user_id,
                     'sender_username': sender_username
                 }, room=str(friend_id))
-
-            else:
-                logger.info(f"Friend request to user {friend_id} already exists")
         except sqlite3.Error as e:
             logger.error(f"Database error: {e}")
             conn.rollback()
@@ -787,6 +961,7 @@ def add_friend(friend_id):
 def accept_friend(friend_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
     user_id = session['user_id']
     form = AddFriendForm()
     if form.validate_on_submit():
@@ -799,27 +974,20 @@ def accept_friend(friend_id):
                            (user_id, friend_id))
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             acceptor_username = cursor.fetchone()[0]
-            cursor.execute("SELECT username FROM users WHERE id = ?", (friend_id,))
-            friend_username = cursor.fetchone()[0]
 
-            # Отправляем уведомление в реальном времени
             send_notifications_real_time(friend_id, f"{acceptor_username} accepted your friend request")
-
             conn.commit()
-            logger.info(f"Friend request from {friend_id} accepted by {user_id}")
 
             socketio.emit('friend_request_accepted', {
                 'friend_id': user_id,
                 'friend_username': acceptor_username
             }, room=str(friend_id))
-
         except sqlite3.Error as e:
             logger.error(f"Database error: {e}")
             conn.rollback()
         finally:
             conn.close()
         return redirect(url_for('home'))
-    logger.error("CSRF validation failed for accept_friend")
     return "Bad Request: CSRF token missing", 400
 
 
@@ -827,6 +995,7 @@ def accept_friend(friend_id):
 def reject_friend(friend_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
     user_id = session['user_id']
     form = AddFriendForm()
     if form.validate_on_submit():
@@ -837,21 +1006,16 @@ def reject_friend(friend_id):
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             rejector_username = cursor.fetchone()[0]
 
-            # Отправляем уведомление в реальном времени
             send_notifications_real_time(friend_id, f"{rejector_username} rejected your friend request")
-
             conn.commit()
-            logger.info(f"Friend request from {friend_id} rejected by {user_id}")
 
             socketio.emit('friend_request_rejected', {'friend_id': user_id}, room=str(friend_id))
-
         except sqlite3.Error as e:
             logger.error(f"Database error: {e}")
             conn.rollback()
         finally:
             conn.close()
         return redirect(url_for('home'))
-    logger.error("CSRF validation failed for reject_friend")
     return "Bad Request: CSRF token missing", 400
 
 
@@ -859,6 +1023,7 @@ def reject_friend(friend_id):
 def create_chat(friend_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
@@ -881,6 +1046,7 @@ def create_chat(friend_id):
 def chat(chat_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
@@ -894,6 +1060,7 @@ def chat(chat_id):
     if not chat:
         conn.close()
         return redirect(url_for('home'))
+
     cursor.execute("""
         SELECT chat_messages.id, chat_messages.content, chat_messages.created_at,
                users.username, chat_messages.sender_id
@@ -903,45 +1070,54 @@ def chat(chat_id):
         ORDER BY chat_messages.created_at ASC
     """, (chat_id,))
     messages = cursor.fetchall()
-    logger.info(f"Loaded messages for chat {chat_id}: {len(messages)} messages")
+
     cursor.execute("""
         UPDATE chat_messages
         SET is_read = 1
         WHERE chat_id = ? AND sender_id != ? AND is_read = 0
     """, (chat_id, user_id))
     conn.commit()
+
+    # ВАЖНО: вычисляем other_user_id
     other_user_id = chat[2] if chat[3] == user_id else chat[3]
+
     send_notifications_real_time(other_user_id)
     send_notifications_real_time(user_id)
     conn.close()
-    return render_template('chat.html', chat=chat, messages=messages, user_id=user_id, chat_id=chat_id)
+
+    # Передаём other_user_id в шаблон
+    return render_template('chat.html',
+                           chat=chat,
+                           messages=messages,
+                           user_id=user_id,
+                           chat_id=chat_id,
+                           other_user_id=other_user_id)  # <-- ДОБАВЛЯЕМ ЭТУ ПЕРЕМЕННУЮ
 
 
 @app.route('/send_message', methods=['POST'])
+@csrf.exempt  # Временно отключаем CSRF для этого маршрута, если не работает
 def send_message():
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+
     user_id = session['user_id']
     data = request.get_json()
     chat_id = data.get('chat_id')
     content = data.get('content')
+
     if not chat_id or not content:
-        logger.error(f"Missing chat_id or content: {data}")
         return jsonify({'status': 'error', 'message': 'Missing chat_id or content'}), 400
+
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO chat_messages (chat_id, sender_id, content) VALUES (?, ?, ?)",
                        (chat_id, user_id, content))
         conn.commit()
-        logger.info(f"Message saved: chat_id={chat_id}, sender_id={user_id}, content={content}")
         cursor.execute("SELECT created_at FROM chat_messages WHERE id = LAST_INSERT_ROWID()")
         created_at = cursor.fetchone()[0]
         cursor.execute("SELECT user1_id, user2_id FROM chats WHERE id = ?", (chat_id,))
         chat = cursor.fetchone()
-        if not chat:
-            logger.error(f"Chat {chat_id} not found")
-            return jsonify({'status': 'error', 'message': 'Chat not found'}), 404
         other_user_id = chat[1] if chat[0] == user_id else chat[0]
         cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
         username = cursor.fetchone()[0]
@@ -955,20 +1131,11 @@ def send_message():
             'created_at': created_at
         }
 
-        # Отправляем уведомление о новом сообщении
         send_notifications_real_time(other_user_id, f"{username}: {content[:50]}{'...' if len(content) > 50 else ''}")
-
         socketio.emit('new_message', message_data, room=str(other_user_id))
         socketio.emit('new_message', message_data, room=str(user_id))
-        socketio.emit('message_sent', message_data, room=str(user_id))
 
-        return jsonify({
-            'status': 'success',
-            'chat_id': chat_id,
-            'sender_id': user_id,
-            'content': content,
-            'created_at': created_at
-        })
+        return jsonify({'status': 'success', **message_data})
     except sqlite3.Error as e:
         logger.error(f"Database error: {e}")
         conn.rollback()
@@ -980,76 +1147,26 @@ def send_message():
 @app.route('/clear_notifications', methods=['POST'])
 def clear_notifications():
     if 'user_id' not in session:
-        logger.warning("Attempt to clear notifications without login")
         return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+
     user_id = session['user_id']
     try:
         conn = sqlite3.connect('nana.db')
         cursor = conn.cursor()
         cursor.execute("DELETE FROM notifications WHERE user_id = ?", (user_id,))
         conn.commit()
-        logger.info(f"Notifications cleared for user_id: {user_id}")
-
-        # Отправляем пустой список уведомлений в реальном времени
-        socketio.emit('update_notifications', {
-            'user_id': user_id,
-            'notifications': [],
-            'unread_count': 0,
-            'unread_messages': 0,
-            'pending_requests': 0,
-            'timestamp': datetime.now().isoformat()
-        }, room=str(user_id))
-
+        conn.close()
         return jsonify({'status': 'success', 'message': 'Notifications cleared'})
     except sqlite3.Error as e:
-        logger.error(f"Database error while clearing notifications for user_id {user_id}: {e}")
-        conn.rollback()
+        logger.error(f"Database error: {e}")
         return jsonify({'status': 'error', 'message': 'Database error'}), 500
-    finally:
-        conn.close()
-
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if 'user_id' in session:
-        return redirect(url_for('home'))
-    form = RegisterForm()
-    if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
-        confirm_password = form.confirm_password.data
-        description = form.description.data
-        city = form.city.data
-        gender = form.gender.data
-        interests = form.interests.data
-        if password != confirm_password:
-            return render_template('register.html', form=form, error="Passwords do not match")
-        conn = sqlite3.connect('nana.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
-        if cursor.fetchone():
-            conn.close()
-            return render_template('register.html', form=form, error="Username already exists")
-        hashed_password = generate_password_hash(password)
-        cursor.execute(
-            "INSERT INTO users (username, password, description, city, gender, interests) VALUES (?, ?, ?, ?, ?, ?)",
-            (username, hashed_password, description, city, gender, interests))
-        conn.commit()
-        conn.close()
-        return redirect(url_for('login'))
-    return render_template('register.html', form=form, cities=['Moscow', 'Saint Petersburg', 'Novosibirsk'])
-
-
-@app.route('/logout')
-def logout():
-    session.pop('user_id', None)
-    return redirect(url_for('login'))
 
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
@@ -1057,18 +1174,13 @@ def profile():
         "SELECT username, description, relationship_status, avatar, city, gender, interests FROM users WHERE id = ?",
         (user_id,))
     user = cursor.fetchone()
+
     cursor.execute("""
         SELECT posts.id, posts.content, posts.created_at, users.username, posts.image,
                (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id AND reaction = 'like') AS likes,
                (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id AND reaction = 'dislike') AS dislikes,
                (SELECT reaction FROM post_reactions WHERE post_id = posts.id AND user_id = ?) AS user_reaction,
-               (SELECT json_group_array(json_array(c.content, c.created_at, u2.username))
-                FROM post_comments c
-                JOIN users u2 ON c.user_id = u2.id
-                WHERE c.post_id = posts.id
-                ORDER BY c.created_at DESC
-                LIMIT 1) AS latest_comment,
-               posts.emotion
+               posts.emotion, posts.mood
         FROM posts 
         JOIN users ON posts.user_id = users.id 
         WHERE posts.user_id = ?
@@ -1077,7 +1189,6 @@ def profile():
     posts_raw = cursor.fetchall()
     posts = []
     for post in posts_raw:
-        latest_comment = json.loads(post[8])[0] if post[8] and json.loads(post[8]) else None
         posts.append({
             'id': post[0],
             'content': post[1],
@@ -1087,53 +1198,61 @@ def profile():
             'likes': post[5],
             'dislikes': post[6],
             'user_reaction': post[7],
-            'latest_comment': latest_comment,
-            'emotion': post[9]
+            'emotion': post[8],
+            'mood': post[9]
         })
+
     cursor.execute("""
         SELECT users.username, users.id FROM friends 
         JOIN users ON friends.friend_id = users.id
         WHERE friends.user_id = ? AND friends.status = 'accepted'
     """, (user_id,))
     friends = cursor.fetchall()
-    cities = ["Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань", "Нижний Новгород", "Челябинск",
-              "Самара", "Омск", "Ростов-на-Дону"]
-    
-    # СОЗДАЕМ ФОРМУ ДЛЯ CSRF ТОКЕНА
-    form = AddFriendForm()  # Создаем экземпляр формы
-    
-    # Обработка POST запроса
+
+    cities = [('', 'Выберите город'), ('Москва', 'Москва'), ('Санкт-Петербург', 'Санкт-Петербург'),
+              ('Новосибирск', 'Новосибирск'), ('Екатеринбург', 'Екатеринбург'), ('Казань', 'Казань'),
+              ('Нижний Новгород', 'Нижний Новгород'), ('Челябинск', 'Челябинск'), ('Самара', 'Самара'),
+              ('Омск', 'Омск'), ('Ростов-на-Дону', 'Ростов-на-Дону'), ('Уфа', 'Уфа'), ('Красноярск', 'Красноярск'),
+              ('Пермь', 'Пермь'), ('Воронеж', 'Воронеж'), ('Волгоград', 'Волгоград'), ('Краснодар', 'Краснодар'),
+              ('Саратов', 'Саратов'), ('Тюмень', 'Тюмень'), ('Тольятти', 'Тольятти'), ('Ижевск', 'Ижевск'),
+              ('Барнаул', 'Барнаул'), ('Ульяновск', 'Ульяновск'), ('Иркутск', 'Иркутск'), ('Хабаровск', 'Хабаровск'),
+              ('Ярославль', 'Ярославль'), ('Владивосток', 'Владивосток'), ('Махачкала', 'Махачкала'),
+              ('Томск', 'Томск'), ('Оренбург', 'Оренбург'), ('Кемерово', 'Кемерово'), ('Новокузнецк', 'Новокузнецк'),
+              ('Рязань', 'Рязань'), ('Астрахань', 'Астрахань'), ('Набережные Челны', 'Набережные Челны'),
+              ('Пенза', 'Пенза'), ('Киров', 'Киров'), ('Липецк', 'Липецк'), ('Балашиха', 'Балашиха'),
+              ('Чебоксары', 'Чебоксары'), ('Калининград', 'Калининград'), ('Тула', 'Тула'), ('Курск', 'Курск'),
+              ('Ставрополь', 'Ставрополь'), ('Улан-Удэ', 'Улан-Удэ'), ('Тверь', 'Тверь'),
+              ('Магнитогорск', 'Магнитогорск'), ('Севастополь', 'Севастополь'), ('Сочи', 'Сочи'),
+              ('Белгород', 'Белгород')]
+
+    form = AddFriendForm()
+
     if request.method == 'POST':
-        # Проверка CSRF токена с использованием формы
         if not form.validate_on_submit():
-            logger.error("CSRF validation failed")
             return jsonify({'status': 'error', 'message': 'CSRF validation failed'}), 400
-            
+
         description = request.form.get('description')
         relationship_status = request.form.get('relationship_status')
         city = request.form.get('city')
         gender = request.form.get('gender')
         interests = request.form.get('interests')
         avatar = request.files.get('avatar')
-        avatar_filename = user[3]
-        
+        avatar_filename = user[3] if user else None
+
         if avatar and allowed_file(avatar.filename):
             filename = secure_filename(avatar.filename)
             avatar_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             avatar.save(avatar_path)
             avatar_filename = filename
-            
+
         cursor.execute(
             "UPDATE users SET description = ?, relationship_status = ?, avatar = ?, city = ?, gender = ?, interests = ? WHERE id = ?",
             (description, relationship_status, avatar_filename, city, gender, interests, user_id))
         conn.commit()
-        flash('Profile updated successfully', 'success')
-        
         conn.close()
         return jsonify({'status': 'success', 'avatar': f'/static/avatars/{avatar_filename}'})
-    
+
     conn.close()
-    # ВАЖНО: передаем form в шаблон
     return render_template('profile.html', user=user, posts=posts, friends=friends, cities=cities, form=form)
 
 
@@ -1141,11 +1260,13 @@ def profile():
 def like_post(post_id):
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
     cursor.execute("SELECT reaction FROM post_reactions WHERE post_id = ? AND user_id = ?", (post_id, user_id))
     existing_reaction = cursor.fetchone()
+
     if existing_reaction:
         if existing_reaction[0] == 'like':
             cursor.execute("DELETE FROM post_reactions WHERE post_id = ? AND user_id = ?", (post_id, user_id))
@@ -1155,14 +1276,11 @@ def like_post(post_id):
     else:
         cursor.execute("INSERT INTO post_reactions (post_id, user_id, reaction) VALUES (?, ?, 'like')",
                        (post_id, user_id))
-        cursor.execute("SELECT user_id, username FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?",
-                       (post_id,))
+        cursor.execute("SELECT user_id FROM posts WHERE id = ?", (post_id,))
         post_owner = cursor.fetchone()
         if post_owner and post_owner[0] != user_id:
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             liker_username = cursor.fetchone()[0]
-
-            # Отправляем уведомление в реальном времени
             send_notifications_real_time(post_owner[0], f"{liker_username} liked your post")
 
     conn.commit()
@@ -1174,6 +1292,7 @@ def like_post(post_id):
     reaction_data = cursor.fetchone()
     likes, dislikes, user_reaction = reaction_data if reaction_data else (0, 0, None)
     conn.close()
+
     socketio.emit('post_reaction_updated', {
         'post_id': post_id,
         'likes': likes,
@@ -1181,24 +1300,21 @@ def like_post(post_id):
         'user_id': user_id,
         'user_reaction': user_reaction
     })
-    return jsonify({
-        'status': 'success',
-        'post_id': post_id,
-        'likes': likes,
-        'dislikes': dislikes,
-        'user_reaction': user_reaction
-    })
+
+    return jsonify({'status': 'success', 'likes': likes, 'dislikes': dislikes, 'user_reaction': user_reaction})
 
 
 @app.route('/dislike_post/<int:post_id>', methods=['POST'])
 def dislike_post(post_id):
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
     cursor.execute("SELECT reaction FROM post_reactions WHERE post_id = ? AND user_id = ?", (post_id, user_id))
     existing_reaction = cursor.fetchone()
+
     if existing_reaction:
         if existing_reaction[0] == 'dislike':
             cursor.execute("DELETE FROM post_reactions WHERE post_id = ? AND user_id = ?", (post_id, user_id))
@@ -1208,14 +1324,11 @@ def dislike_post(post_id):
     else:
         cursor.execute("INSERT INTO post_reactions (post_id, user_id, reaction) VALUES (?, ?, 'dislike')",
                        (post_id, user_id))
-        cursor.execute("SELECT user_id, username FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?",
-                       (post_id,))
+        cursor.execute("SELECT user_id FROM posts WHERE id = ?", (post_id,))
         post_owner = cursor.fetchone()
         if post_owner and post_owner[0] != user_id:
             cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
             disliker_username = cursor.fetchone()[0]
-
-            # Отправляем уведомление в реальном времени
             send_notifications_real_time(post_owner[0], f"{disliker_username} disliked your post")
 
     conn.commit()
@@ -1227,6 +1340,7 @@ def dislike_post(post_id):
     reaction_data = cursor.fetchone()
     likes, dislikes, user_reaction = reaction_data if reaction_data else (0, 0, None)
     conn.close()
+
     socketio.emit('post_reaction_updated', {
         'post_id': post_id,
         'likes': likes,
@@ -1234,13 +1348,8 @@ def dislike_post(post_id):
         'user_id': user_id,
         'user_reaction': user_reaction
     })
-    return jsonify({
-        'status': 'success',
-        'post_id': post_id,
-        'likes': likes,
-        'dislikes': dislikes,
-        'user_reaction': user_reaction
-    })
+
+    return jsonify({'status': 'success', 'likes': likes, 'dislikes': dislikes, 'user_reaction': user_reaction})
 
 
 @app.route('/create_post', methods=['POST'])
@@ -1249,50 +1358,79 @@ def create_post():
         return redirect(url_for('login'))
 
     user_id = session['user_id']
-    content = request.form['content']
+    content = request.form.get('content', '')
     image = request.files.get('image')
     photo_path = request.form.get('photo_path')
     emotion = request.form.get('emotion', None)
     speech_text = request.form.get('speech_text', '')
 
-    # Если есть распознанная речь, используем её как содержание поста
     if speech_text and speech_text.strip() and (not content or content.strip() == ''):
         content = speech_text.strip()
 
     image_filename = None
 
-    logger.info(
-        f"[CreatePost] Received: content={content}, speech_text={speech_text}, photo_path={photo_path}, emotion={emotion}, image={image.filename if image else None}")
-
     if photo_path and os.path.exists(photo_path):
-        logger.info(f"[CreatePost] Processing photo_path: {photo_path}")
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         filename = os.path.basename(photo_path)
         target_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         try:
             import shutil
             shutil.move(photo_path, target_path)
-            logger.info(f"[CreatePost] Moved photo from {photo_path} to {target_path}")
             image_filename = filename
         except Exception as e:
-            logger.error(f"[CreatePost] Failed to move photo from {photo_path} to {target_path}: {e}")
+            logger.error(f"Failed to move photo: {e}")
     elif image and allowed_file(image.filename):
-        logger.info(f"[CreatePost] Processing uploaded image: {image.filename}")
         filename = secure_filename(image.filename)
         target_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         image.save(target_path)
-        logger.info(f"[CreatePost] Saved image to {target_path}")
         image_filename = filename
+
+    mood_result = analyze_mood_text(content) if content else {'mood': 'neutral', 'score': 0, 'emoji': '😐',
+                                                              'label': 'Нейтральное'}
 
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO posts (user_id, content, image, emotion) VALUES (?, ?, ?, ?)",
-                   (user_id, content, image_filename, emotion))
+    cursor.execute("INSERT INTO posts (user_id, content, image, emotion, mood) VALUES (?, ?, ?, ?, ?)",
+                   (user_id, content, image_filename, emotion, mood_result['mood']))
     conn.commit()
-    cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
-    username = cursor.fetchone()[0]
+
+    cursor.execute("SELECT username, city FROM users WHERE id = ?", (user_id,))
+    user_info = cursor.fetchone()
+    username = user_info[0]
+    city = user_info[1] if user_info and len(user_info) > 1 else None
+
     cursor.execute("SELECT id, created_at FROM posts WHERE id = LAST_INSERT_ROWID()")
     post_id, created_at = cursor.fetchone()
+    conn.close()
+
+    if city:
+        conn = sqlite3.connect('nana.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT mood, score, count FROM city_moods WHERE city_name = ?", (city,))
+        existing = cursor.fetchone()
+        if existing:
+            current_mood, current_score, current_count = existing
+            new_count = current_count + 1
+            new_score = (current_score * current_count + mood_result['score']) / new_count
+            cursor.execute("""
+                UPDATE city_moods SET mood = ?, score = ?, count = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE city_name = ?
+            """, (mood_result['mood'], new_score, new_count, city))
+        else:
+            cursor.execute("""
+                INSERT INTO city_moods (city_name, mood, score, count)
+                VALUES (?, ?, ?, ?)
+            """, (city, mood_result['mood'], mood_result['score'], 1))
+        conn.commit()
+        conn.close()
+
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO mood_history (user_id, mood, score, text) 
+        VALUES (?, ?, ?, ?)
+    """, (user_id, mood_result['mood'], mood_result['score'], content[:200]))
+    conn.commit()
     conn.close()
 
     socketio.emit('new_post', {
@@ -1305,8 +1443,10 @@ def create_post():
         'dislikes': 0,
         'user_reaction': None,
         'emotion': emotion,
-        'has_speech': bool(speech_text and speech_text.strip())
+        'mood': mood_result['mood'],
+        'mood_emoji': mood_result['emoji']
     })
+
     return redirect(url_for('home'))
 
 
@@ -1314,27 +1454,24 @@ def create_post():
 def enhance_post():
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+
     data = request.get_json()
     content = data.get('content')
     if not content:
         return jsonify({'status': 'error', 'message': 'No content provided'}), 400
+
     try:
         lang = detect(content)
         if lang != 'ru':
             enhanced_content = content + "."
         else:
-            prompt = f"Улучшите следующий текст на русском языке, сохранив его основной смысл, но сделав стиль более живым, эмоциональным и естественным. Обязательно добавьте знаки препинания (точки, запятые, восклицательные знаки, если уместно), используйте разговорный тон и исправьте орфографические или стилистические ошибки. Верните только улучшенный текст без дополнительных комментариев. Текст: {content}"
+            prompt = f"Улучшите следующий текст на русском языке, сохранив его основной смысл, но сделав стиль более живым, эмоциональным и естественным. Верните только улучшенный текст: {content}"
             response = gemini_model.generate_content(prompt)
             enhanced_content = response.text.strip()
-        # Ensure at least a period at the end if missing
+
         if not enhanced_content.endswith(('.', '!', '?')):
             enhanced_content += '.'
-        word_count = len(re.findall(r'\b\w+\b', enhanced_content))
-        if word_count > 100:
-            return jsonify({
-                'status': 'error',
-                'message': 'Enhanced content exceeds 100 words'
-            }), 400
+
         return jsonify({
             'status': 'success',
             'original_content': content,
@@ -1342,12 +1479,10 @@ def enhance_post():
         })
     except Exception as e:
         logger.error(f"Error enhancing post: {e}")
-        # Fallback with basic punctuation
-        enhanced_content = content.strip() + '.'
         return jsonify({
             'status': 'success',
             'original_content': content,
-            'enhanced_content': enhanced_content
+            'enhanced_content': content.strip() + '.'
         })
 
 
@@ -1355,12 +1490,15 @@ def enhance_post():
 def add_comment():
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+
     user_id = session['user_id']
     data = request.get_json()
     post_id = data.get('post_id')
     content = data.get('content')
+
     if not post_id or not content:
         return jsonify({'status': 'error', 'message': 'Missing post_id or content'}), 400
+
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
     cursor.execute("INSERT INTO post_comments (post_id, user_id, content) VALUES (?, ?, ?)",
@@ -1370,21 +1508,15 @@ def add_comment():
     username = cursor.fetchone()[0]
     cursor.execute("SELECT created_at FROM post_comments WHERE id = LAST_INSERT_ROWID()")
     created_at = cursor.fetchone()[0]
-    cursor.execute("SELECT user_id, username FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?",
-                   (post_id,))
+
+    cursor.execute("SELECT user_id FROM posts WHERE id = ?", (post_id,))
     post_owner = cursor.fetchone()
     if post_owner and post_owner[0] != user_id:
-        # Отправляем уведомление в реальном времени
         send_notifications_real_time(post_owner[0], f"{username} commented on your post")
-
         conn.commit()
 
     conn.close()
-    return jsonify({
-        'status': 'success',
-        'username': username,
-        'created_at': created_at
-    })
+    return jsonify({'status': 'success', 'username': username, 'created_at': created_at})
 
 
 @app.route('/get_comments/<int:post_id>', methods=['GET'])
@@ -1410,10 +1542,11 @@ def get_comments(post_id):
 def create_story():
     if 'user_id' not in session:
         return redirect(url_for('login'))
+
     user_id = session['user_id']
     form = StoryForm()
     if form.validate_on_submit():
-        content = request.form['content']
+        content = request.form.get('content', '')
         image = request.files.get('image')
         image_filename = None
 
@@ -1453,7 +1586,7 @@ def create_story():
 def view_story(story_id):
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
-    user_id = session['user_id']
+
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
     try:
@@ -1463,7 +1596,7 @@ def view_story(story_id):
         views = cursor.fetchone()[0]
         return jsonify({'status': 'success', 'views': views})
     except sqlite3.Error as e:
-        logger.error(f"Database error updating story views: {e}")
+        logger.error(f"Database error: {e}")
         conn.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
     finally:
@@ -1474,6 +1607,7 @@ def view_story(story_id):
 def get_story(story_id):
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+
     user_id = session['user_id']
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
@@ -1487,12 +1621,8 @@ def get_story(story_id):
     story = cursor.fetchone()
     conn.close()
     if story:
-        return jsonify({
-            'status': 'success',
-            'content': story[0],
-            'image': story[1]
-        })
-    return jsonify({'status': 'error', 'message': 'Story not found or not accessible'}), 404
+        return jsonify({'status': 'success', 'content': story[0], 'image': story[1]})
+    return jsonify({'status': 'error', 'message': 'Story not found'}), 404
 
 
 @app.route('/static/stories/<path:filename>')
@@ -1500,10 +1630,100 @@ def serve_story_file(filename):
     return send_from_directory(app.config['STORIES_FOLDER'], filename)
 
 
-# Новые endpoints для уведомлений
+# ==================== API ДЛЯ КАРТЫ МАРОДЁРОВ ====================
+
+@app.route('/api/mood_rooms/stats')
+def api_mood_rooms_stats():
+    """Получить статистику по комнатам настроений"""
+    stats = {}
+    total = 0
+    for mood, room in mood_chat_rooms.items():
+        count = len(room['users'])
+        stats[mood] = count
+        total += count
+
+    return jsonify({
+        'status': 'success',
+        'data': stats,
+        'total': total
+    })
+
+
+@app.route('/api/cities/stats')
+def api_cities_stats():
+    """Получить статистику по городам с количеством пользователей и настроением (АНОНИМНО)"""
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, username, city 
+        FROM users 
+        WHERE city IS NOT NULL AND city != ''
+    """)
+    users = cursor.fetchall()
+
+    city_data = {}
+
+    for user in users:
+        user_id, username, city = user
+        if not city or city == '':
+            continue
+
+        mood = user_current_mood.get(user_id)
+
+        if not mood:
+            cursor.execute("""
+                SELECT mood FROM mood_history 
+                WHERE user_id = ? 
+                ORDER BY created_at DESC LIMIT 1
+            """, (user_id,))
+            mood_result = cursor.fetchone()
+            mood = mood_result[0] if mood_result else 'neutral'
+
+        if city not in city_data:
+            city_data[city] = {
+                'count': 0,
+                'moods': []
+            }
+
+        city_data[city]['count'] += 1
+        city_data[city]['moods'].append(mood)
+
+    conn.close()
+
+    result = []
+    for city, data in city_data.items():
+        mood_counts = Counter(data['moods'])
+        dominant_mood = mood_counts.most_common(1)[0][0] if mood_counts else 'neutral'
+
+        mood_data = MOOD_ROOMS.get(dominant_mood, {})
+
+        mood_percentages = {}
+        total_moods = len(data['moods'])
+        for mood_type, count in mood_counts.items():
+            mood_percentages[mood_type] = round(count / total_moods * 100, 1) if total_moods > 0 else 0
+
+        result.append({
+            'city': city,
+            'count': data['count'],
+            'dominant_mood': dominant_mood,
+            'emoji': mood_data.get('emoji', '😐'),
+            'label': mood_data.get('name', 'Нейтральное'),
+            'mood_distribution': mood_percentages
+        })
+
+    result.sort(key=lambda x: x['count'], reverse=True)
+
+    return jsonify({
+        'status': 'success',
+        'data': result,
+        'total_cities': len(result),
+        'total_users': sum(c['count'] for c in result)
+    })
+
+
 @app.route('/api/notifications/latest')
 def get_latest_notifications():
-    """Получить последние уведомления"""
     if 'user_id' not in session:
         return jsonify({'error': 'Not logged in'}), 401
 
@@ -1520,11 +1740,8 @@ def get_latest_notifications():
     """, (user_id,))
 
     notifications = cursor.fetchall()
-
-    # Считаем количество непрочитанных
     cursor.execute("SELECT COUNT(*) FROM notifications WHERE user_id = ?", (user_id,))
     unread_count = cursor.fetchone()[0]
-
     conn.close()
 
     return jsonify({
@@ -1536,7 +1753,6 @@ def get_latest_notifications():
 
 @app.route('/api/notifications/check')
 def check_new_notifications():
-    """Проверить наличие новых уведомлений"""
     if 'user_id' not in session:
         return jsonify({'error': 'Not logged in'}), 401
 
@@ -1545,13 +1761,11 @@ def check_new_notifications():
 
     conn = sqlite3.connect('nana.db')
     cursor = conn.cursor()
-
     cursor.execute("""
         SELECT COUNT(*) 
         FROM notifications 
         WHERE user_id = ? AND created_at > ?
     """, (user_id, last_check))
-
     new_count = cursor.fetchone()[0]
     conn.close()
 
@@ -1562,82 +1776,358 @@ def check_new_notifications():
     })
 
 
-# SocketIO event handlers
+# ==================== WEBSOCKET ОБРАБОТЧИКИ ====================
+
 @socketio.on('connect')
 def handle_connect():
-    logger.info('Клиент подключился')
     if 'user_id' in session:
         user_id = session['user_id']
         join_room(str(user_id))
-
-        # Добавляем пользователя в онлайн
         with online_lock:
             online_users.add(user_id)
-
-        # Отправляем текущий онлайн статус
         emit('online_status', {'status': 'online', 'user_id': user_id})
-
-        # Немедленно отправляем уведомления при подключении
         send_notifications_real_time(user_id)
-
-        logger.info(f'User {user_id} connected and subscribed to notifications')
-
-
-@socketio.on('user_online')
-def handle_user_online():
-    """Пользователь в сети"""
-    user_id = session.get('user_id')
-    if user_id:
-        with online_lock:
-            online_users.add(user_id)
-        logger.info(f"User {user_id} is now online")
-
-        # Немедленно отправляем уведомления при подключении
-        send_notifications_real_time(user_id)
-        emit('online_status', {'status': 'online', 'user_id': user_id})
-
-
-@socketio.on('user_offline')
-def handle_user_offline():
-    """Пользователь вышел из сети"""
-    user_id = session.get('user_id')
-    if user_id:
-        with online_lock:
-            online_users.discard(user_id)
-        logger.info(f"User {user_id} is now offline")
-        emit('online_status', {'status': 'offline', 'user_id': user_id})
+        logger.info(f'User {user_id} connected')
 
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    """Обработка отключения"""
     user_id = session.get('user_id')
     if user_id:
         with online_lock:
             online_users.discard(user_id)
-        logger.info(f"User {user_id} disconnected")
+        logger.info(f'User {user_id} disconnected')
 
+
+# ==================== WEBSOCKET ДЛЯ ЗВОНКОВ ====================
+
+@socketio.on('call_user')
+def handle_call_user(data):
+    """Инициация звонка"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    friend_id = data.get('friend_id')
+    call_type = data.get('type', 'video')
+
+    if not friend_id:
+        return
+
+    call_id = f"{user_id}_{friend_id}_{int(time.time())}"
+
+    conn = sqlite3.connect('nana.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+
+    username = user[0] if user else 'Пользователь'
+
+    emit('incoming_call', {
+        'call_id': call_id,
+        'caller_id': user_id,
+        'caller_username': username,
+        'type': call_type
+    }, room=str(friend_id))
+
+    emit('call_initiated', {
+        'call_id': call_id,
+        'status': 'ringing'
+    }, room=str(user_id))
+
+
+@socketio.on('accept_call')
+def handle_accept_call(data):
+    """Принятие звонка"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    call_id = data.get('call_id')
+    caller_id = data.get('caller_id')
+
+    if not call_id or not caller_id:
+        return
+
+    emit('call_accepted', {
+        'call_id': call_id,
+        'status': 'connected'
+    }, room=str(user_id))
+
+    emit('call_accepted', {
+        'call_id': call_id,
+        'status': 'connected',
+        'friend_id': user_id
+    }, room=str(caller_id))
+
+
+@socketio.on('reject_call')
+def handle_reject_call(data):
+    """Отклонение звонка"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    call_id = data.get('call_id')
+    caller_id = data.get('caller_id')
+
+    if not call_id or not caller_id:
+        return
+
+    emit('call_rejected', {
+        'call_id': call_id,
+        'status': 'rejected'
+    }, room=str(caller_id))
+
+
+@socketio.on('end_call')
+def handle_end_call(data):
+    """Завершение звонка"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    call_id = data.get('call_id')
+    friend_id = data.get('friend_id')
+
+    if not call_id or not friend_id:
+        return
+
+    emit('call_ended', {
+        'call_id': call_id,
+        'status': 'ended'
+    }, room=str(friend_id))
+
+    emit('call_ended', {
+        'call_id': call_id,
+        'status': 'ended'
+    }, room=str(user_id))
+
+
+@socketio.on('webrtc_offer')
+def handle_webrtc_offer(data):
+    """Передача SDP offer"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    target_user_id = data.get('target_user_id')
+    offer = data.get('offer')
+    call_id = data.get('call_id')
+
+    if not target_user_id or not offer:
+        return
+
+    emit('webrtc_offer_received', {
+        'offer': offer,
+        'call_id': call_id,
+        'from_user_id': user_id
+    }, room=str(target_user_id))
+
+
+@socketio.on('webrtc_answer')
+def handle_webrtc_answer(data):
+    """Передача SDP answer"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    target_user_id = data.get('target_user_id')
+    answer = data.get('answer')
+    call_id = data.get('call_id')
+
+    if not target_user_id or not answer:
+        return
+
+    emit('webrtc_answer_received', {
+        'answer': answer,
+        'call_id': call_id,
+        'from_user_id': user_id
+    }, room=str(target_user_id))
+
+
+@socketio.on('webrtc_ice_candidate')
+def handle_webrtc_ice_candidate(data):
+    """Передача ICE кандидатов"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    target_user_id = data.get('target_user_id')
+    candidate = data.get('candidate')
+    call_id = data.get('call_id')
+
+    if not target_user_id or not candidate:
+        return
+
+    emit('webrtc_ice_candidate_received', {
+        'candidate': candidate,
+        'call_id': call_id,
+        'from_user_id': user_id
+    }, room=str(target_user_id))
+
+@socketio.on('join_room')
+def on_join(data):
+    try:
+        room = data.get('room') if isinstance(data, dict) else str(data)
+        if room:
+            join_room(room)
+            logger.info(f'Client joined room: {room}')
+    except Exception as e:
+        logger.error(f'Error in on_join: {e}')
+
+
+# ==================== WEBSOCKET ДЛЯ ЧАТА ПО НАСТРОЕНИЯМ (ПОЛНАЯ АНОНИМНОСТЬ) ====================
+
+@socketio.on('select_mood')
+def handle_select_mood(data):
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    mood = data.get('mood')
+    if not mood or mood not in MOOD_ROOMS:
+        return
+
+    set_user_mood(user_id, mood)
+
+    emit('mood_selected', {
+        'mood': mood,
+        'mood_name': MOOD_ROOMS[mood]['name'],
+        'emoji': MOOD_ROOMS[mood]['emoji'],
+        'color': MOOD_ROOMS[mood]['color']
+    }, room=str(user_id))
+
+    update_mood_room_stats()
+
+
+@socketio.on('join_mood_room')
+def handle_join_mood_room(data):
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    mood = data.get('mood')
+    if not mood or mood not in MOOD_ROOMS:
+        return
+
+    set_user_mood(user_id, mood)
+
+    if user_id in mood_chat_users:
+        old_mood = mood_chat_users[user_id]
+        if old_mood != mood:
+            if old_mood in mood_chat_rooms:
+                mood_chat_rooms[old_mood]['users'].discard(user_id)
+            del mood_chat_users[user_id]
+
+    # Полностью анонимно - не передаём имя пользователя
+    room = add_user_to_mood_room(user_id, mood)
+    join_room(f"mood_{mood}")
+
+    # Отправляем историю (без имён)
+    emit('mood_history', {
+        'messages': room['messages'][-50:],
+        'users_count': len(room['users']),
+        'current_mood': mood,
+        'mood_name': MOOD_ROOMS[mood]['name'],
+        'mood_emoji': MOOD_ROOMS[mood]['emoji']
+    }, room=f"mood_{mood}")
+
+    # Уведомляем всех о новом пользователе (анонимно)
+    emit('mood_user_joined', {
+        'users_count': len(room['users'])
+    }, room=f"mood_{mood}")
+
+    # Отправляем подтверждение пользователю
+    emit('mood_joined', {
+        'mood': mood,
+        'mood_name': MOOD_ROOMS[mood]['name'],
+        'mood_emoji': MOOD_ROOMS[mood]['emoji'],
+        'users_count': len(room['users']),
+        'messages': room['messages'][-50:]
+    }, room=str(user_id))
+
+    update_mood_room_stats()
+
+
+@socketio.on('leave_mood_room')
+def handle_leave_mood_room(data):
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    if user_id in mood_chat_users:
+        mood = mood_chat_users[user_id]
+        remove_user_from_mood_room(user_id)
+
+        room = get_mood_room(mood)
+        emit('mood_user_left', {
+            'users_count': len(room['users'])
+        }, room=f"mood_{mood}")
+
+        emit('mood_left', {
+            'mood': mood,
+            'success': True
+        }, room=str(user_id))
+
+        update_mood_room_stats()
+
+
+@socketio.on('mood_message')
+def handle_mood_message(data):
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    mood = data.get('mood')
+    message = data.get('message', '').strip()
+
+    if not mood or not message or mood not in MOOD_ROOMS:
+        return
+
+    if user_id not in mood_chat_users or mood_chat_users[user_id] != mood:
+        return
+
+    # Сохраняем сообщение (полностью анонимно, без имени)
+    saved_message = save_mood_message(mood, message, user_id)
+    mood_analysis = analyze_mood_text(message)
+
+    # Отправляем всем в комнате (анонимно)
+    emit('mood_new_message', {
+        'message': message,
+        'created_at': saved_message['created_at'],
+        'mood_emoji': MOOD_ROOMS[mood]['emoji'],
+        'message_mood': mood_analysis['emoji']
+    }, room=f"mood_{mood}")
+
+
+def update_mood_room_stats():
+    stats = {}
+    total = 0
+    for mood, room in mood_chat_rooms.items():
+        count = len(room['users'])
+        stats[mood] = count
+        total += count
+
+    socketio.emit('mood_users_update', stats)
+
+
+# ==================== ОСТАЛЬНЫЕ WEBSOCKET ОБРАБОТЧИКИ ====================
 
 @socketio.on('audio_data')
 def handle_audio_data(data):
-    """
-    Обработка аудио данных от клиента
-    """
     try:
         user_id = session.get('user_id')
         if not user_id:
             emit('speech_result', {'error': 'Not logged in'})
             return
 
-        # Декодируем base64 аудио данные
         if 'audio' in data:
-            audio_base64 = data['audio'].split(',')[1]  # Убираем префикс data:audio/wav;base64,
+            audio_base64 = data['audio'].split(',')[1]
             audio_data = base64.b64decode(audio_base64)
-
-            # Обрабатываем аудио
             recognized_text, success, command = process_audio(audio_data)
 
-            # Сохраняем в базу данных
             if success and recognized_text and recognized_text != "Речь не распознана":
                 conn = sqlite3.connect('nana.db')
                 cursor = conn.cursor()
@@ -1646,101 +2136,22 @@ def handle_audio_data(data):
                 conn.commit()
                 conn.close()
 
-            # Если это команда - обрабатываем
             if command:
-                logger.info(f"Voice command detected: {command} from user {user_id}")
+                emit('voice_command', {
+                    'type': command,
+                    'message': f'Выполняется команда: {command}',
+                    'text': recognized_text
+                }, room=str(user_id))
 
-                if command == 'open_profile':
-                    emit('voice_command', {
-                        'type': 'open_profile',
-                        'message': 'Вы хотите перейти на страницу профиля?',
-                        'text': recognized_text
-                    }, room=str(user_id))
-
-                elif command == 'open_friends':
-                    emit('voice_command', {
-                        'type': 'open_friends',
-                        'message': 'Вы хотите открыть список друзей?',
-                        'text': recognized_text
-                    }, room=str(user_id))
-
-                elif command == 'create_post':
-                    emit('voice_command', {
-                        'type': 'create_post',
-                        'message': 'Вы хотите создать новый пост?',
-                        'text': recognized_text
-                    }, room=str(user_id))
-
-                elif command == 'logout':
-                    emit('voice_command', {
-                        'type': 'logout',
-                        'message': 'Вы хотите выйти из системы?',
-                        'text': recognized_text
-                    }, room=str(user_id))
-
-                elif command == 'go_home':
-                    emit('voice_command', {
-                        'type': 'go_home',
-                        'message': 'Переход на главную страницу',
-                        'text': recognized_text
-                    }, room=str(user_id))
-
-                elif command == 'help':
-                    emit('voice_command', {
-                        'type': 'help',
-                        'message': 'Доступные команды: "открыть профиль", "друзья", "выйти", "домой", "создать пост"',
-                        'text': recognized_text
-                    }, room=str(user_id))
-
-                elif command == 'take_photo':
-                    emit('voice_command', {
-                        'type': 'take_photo',
-                        'message': 'Покажите жестом "FIST" для фото',
-                        'text': recognized_text
-                    }, room=str(user_id))
-
-            # Отправляем результат обратно клиенту
             emit('speech_result', {
                 'text': recognized_text,
                 'success': success,
                 'timestamp': datetime.now().isoformat(),
                 'is_command': bool(command)
             }, room=str(user_id))
-
-        else:
-            emit('speech_result', {'error': 'No audio data received'})
-
     except Exception as e:
-        logger.error(f"Error handling audio data: {e}")
+        logger.error(f"Error handling audio: {e}")
         emit('speech_result', {'error': str(e)})
-
-
-@socketio.on('join_speech_room')
-def handle_join_speech_room(data):
-    """
-    Присоединение к комнате для обновлений речи
-    """
-    user_id = session.get('user_id')
-    if user_id:
-        room_name = f'speech_room_{user_id}'
-        join_room(room_name)
-        emit('speech_room_joined', {'room': room_name})
-
-
-@socketio.on('join_room')
-def on_join(data):
-    try:
-        if isinstance(data, dict):
-            room = data.get('room')
-        else:
-            room = str(data)
-        if room:
-            join_room(room)
-            logger.info(f'Клиент присоединился к комнате: {room}')
-        else:
-            logger.warning('No room specified in join_room event')
-    except Exception as e:
-        logger.error(f'Error in on_join: {e}')
 
 
 @socketio.on('frame')
@@ -1751,15 +2162,11 @@ def handle_frame(data):
             emit('error', {'error': 'Not logged in'})
             return
 
-        previous_gesture = None
-        middle_finger_sent = False
-
         img_data = base64.b64decode(data.split(",")[1])
         nparr = np.frombuffer(img_data, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
         if frame is None or frame.size == 0:
-            logger.error("[Frame] Invalid or empty frame")
             emit('error', {'error': 'Empty frame'})
             return
 
@@ -1777,54 +2184,18 @@ def handle_frame(data):
             filename = f"user_photo/{user_id}_{int(time.time())}.jpg"
             success = cv2.imwrite(filename, frame)
             if success:
-                logger.info(f"[Saved] {filename}")
                 response['photo'] = filename
-            else:
-                logger.error(f"[Failed] Could not save {filename}")
-                emit('error', {'error': f'Failed to save photo: {filename}'})
-                return
 
-        if gesture == "VICTORY":
-            logger.info(f"[Gesture] VICTORY detected for user {user_id}")
-            # Отправляем событие с user_id для подтверждения
-            emit('spiderman_gesture', {
-                'message': 'Вы хотите перейти на страницу своего профиля?',
-                'user_id': user_id
-            })
-            return
-
-        if gesture == "ROCK":
-            logger.info("[Gesture] Detected: ROCK")
-            emit('rock_gesture')
-            return
-
-        if gesture == "MIDDLE_FINGER" and not middle_finger_sent:
-            filename = f"user_photo/{user_id}_{int(time.time())}.jpg"
-            success = cv2.imwrite(filename, frame)
-            if success:
-                logger.info(f"[Captured] {filename}")
-                os.remove(filename)
-                middle_finger_sent = True
-            else:
-                logger.error(f"[Failed] Could not save {filename}")
-
-        if gesture != "MIDDLE_FINGER":
-            middle_finger_sent = False
-
-        previous_gesture = gesture
         emit('response', response, room=str(user_id))
-
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
-        emit('error', {'error': str(e)}, room=str(user_id))
+        logger.error(f"Frame error: {e}")
+        emit('error', {'error': str(e)})
 
 
-import os
-from pyngrok import ngrok
+# ==================== ЗАПУСК ====================
 
 if __name__ == '__main__':
     try:
-        # Если запускаемся в Colab — пробрасываем ngrok вручную
         if 'COLAB_GPU' in os.environ or 'COLAB_TPU_ADDR' in os.environ:
             from pyngrok import ngrok
 
@@ -1832,9 +2203,11 @@ if __name__ == '__main__':
             print(f"✅ Открой сайт по ссылке: {public_url}")
 
         init_db()
-        logger.info("Starting Flask-SocketIO server with speech recognition...")
-        socketio.run(app, debug=True, host='0.0.0.0', port=5000, use_reloader=False)
+        migrate_database()
+        create_test_user()
 
+        logger.info("Starting NaNa Social Network with Mood Map and Anonymous Chat...")
+        socketio.run(app, debug=True, host='0.0.0.0', port=5000, use_reloader=False)
     except Exception as e:
         logger.error(f"Server startup failed: {e}")
         raise
