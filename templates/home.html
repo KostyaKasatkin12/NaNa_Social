@@ -58,13 +58,13 @@
             border-radius: 12px;
             transition: all 0.3s ease;
             background: white;
-            color: #1f2937; /* Черный текст */
+            color: #1f2937;
         }
 
         .dark .input-modern {
             border-color: #4b5563;
             background: #374151;
-            color: #f9fafb; /* Белый текст в темной теме */
+            color: #f9fafb;
         }
 
         .input-modern:focus {
@@ -141,7 +141,6 @@
             background: #1f2937;
         }
 
-        /* Фикс для текста в формах */
         textarea, input[type="text"] {
             color: #1f2937 !important;
         }
@@ -150,7 +149,6 @@
             color: #f9fafb !important;
         }
 
-        /* Улучшенный вид для кнопок историй */
         .story-view-btn {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
@@ -167,12 +165,319 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
+
+        /* Карточки быстрого доступа */
+        .quick-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px 24px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quick-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .quick-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+
+        .quick-card .title {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .quick-card .desc {
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        .quick-card .glow-effect {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .quick-card:hover .glow-effect {
+            opacity: 1;
+        }
+
+        .quick-card-mood {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.05));
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .quick-card-mood .glow-effect {
+            background: radial-gradient(circle at center, rgba(16, 185, 129, 0.15), transparent 70%);
+        }
+
+        .quick-card-anon {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(107, 70, 193, 0.05));
+            border-color: rgba(139, 92, 246, 0.2);
+        }
+
+        .quick-card-anon .glow-effect {
+            background: radial-gradient(circle at center, rgba(139, 92, 246, 0.15), transparent 70%);
+        }
+
+        /* Стили для уведомления о звонке */
+        .call-notification {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            z-index: 9999;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 16px;
+            padding: 20px 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            min-width: 320px;
+            animation: slideInCall 0.4s ease-out;
+        }
+
+        @keyframes slideInCall {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .call-notification .caller-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 12px;
+        }
+
+        .call-notification .caller-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .call-notification .caller-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .call-notification .call-type {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .call-notification .call-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .call-notification .call-actions button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .call-notification .call-actions .btn-accept {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .call-notification .call-actions .btn-accept:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .call-notification .call-actions .btn-reject {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .call-notification .call-actions .btn-reject:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .call-notification .ringing-animation {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+                .quick-cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 640px) {
+            .quick-cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .quick-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px 24px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quick-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .quick-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+
+        .quick-card .title {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .quick-card .desc {
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        .quick-card .glow-effect {
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .quick-card:hover .glow-effect {
+            opacity: 1;
+        }
+
+        .quick-card-mood {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.05));
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .quick-card-mood .glow-effect {
+            background: radial-gradient(circle at center, rgba(16, 185, 129, 0.15), transparent 70%);
+        }
+
+        .quick-card-anon {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(107, 70, 193, 0.05));
+            border-color: rgba(139, 92, 246, 0.2);
+        }
+
+        .quick-card-anon .glow-effect {
+            background: radial-gradient(circle at center, rgba(139, 92, 246, 0.15), transparent 70%);
+        }
+
+        .quick-card .no-underline {
+            text-decoration: none;
+        }
+
+        .call-notification .ringing-animation span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: ringingDot 1.4s infinite ease-in-out;
+        }
+
+        .call-notification .ringing-animation span:nth-child(2) { animation-delay: 0.2s; }
+        .call-notification .ringing-animation span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes ringingDot {
+            0%, 60%, 100% { transform: scale(1); opacity: 0.5; }
+            30% { transform: scale(1.5); opacity: 1; }
+        }
+
+        .call-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .call-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .call-btn i { font-size: 14px; }
+
+        .call-btn-video {
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+        }
+
+        .call-btn-video:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        }
+
+        .friend-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .quick-cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 640px) {
+            .quick-cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen font-poppins text-gray-800 dark:text-gray-200 transition-colors duration-300">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <!-- Header -->
-        <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 rounded-2xl shadow-xl mb-8 text-center relative overflow-hidden">
+        <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 rounded-2xl shadow-xl mb-6 text-center relative overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20"></div>
             <div class="relative z-10">
                 <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-4">
@@ -186,6 +491,37 @@
                 </div>
             </div>
         </header>
+
+                <!-- ==================== КАРТОЧКИ БЫСТРОГО ДОСТУПА ==================== -->
+        <div class="quick-cards-grid mb-6">
+            <!-- Карта мародёров -->
+            <a href="{{ url_for('mood_map') }}" class="quick-card quick-card-mood no-underline">
+                <div class="glow-effect"></div>
+                <div class="relative z-10">
+                    <div class="icon">🗺️</div>
+                    <div class="title text-gray-800 dark:text-white">Карта мародёров</div>
+                    <div class="desc text-gray-600 dark:text-gray-400">Узнай настроение городов в реальном времени</div>
+                    <div class="mt-3 flex items-center gap-2 text-sm text-emerald-500">
+                        <i class="fas fa-arrow-right"></i>
+                        <span>Перейти к карте</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Чат по настроениям -->
+            <a href="{{ url_for('mood_chat') }}" class="quick-card quick-card-anon no-underline">
+                <div class="glow-effect"></div>
+                <div class="relative z-10">
+                    <div class="icon">💬</div>
+                    <div class="title text-gray-800 dark:text-white">Чат по настроениям</div>
+                    <div class="desc text-gray-600 dark:text-gray-400">Поделись чувствами с теми, кто тебя поймёт</div>
+                    <div class="mt-3 flex items-center gap-2 text-sm text-purple-500">
+                        <i class="fas fa-arrow-right"></i>
+                        <span>Присоединиться</span>
+                    </div>
+                </div>
+            </a>
+        </div>
 
         <!-- Stories Section -->
         <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg mb-8 post-card">
@@ -272,7 +608,7 @@
             </div>
         </div>
 
-        <!-- Main Content Grid -->
+        <!-- Main Content Grid (остается без изменений) -->
         <main class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Left Sidebar - Friends & Friend Requests -->
             <div class="lg:col-span-3 space-y-6">
@@ -293,22 +629,31 @@
                     <div class="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                         {% if friends %}
                             {% for friend in friends %}
-                                <a href="{{ url_for('create_chat', friend_id=friend[1]) }}"
-                                   class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition group">
-                                    <div class="relative">
-                                        <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center justify-center text-white font-semibold text-lg">
-                                            {{ friend[0][0]|upper }}
+                                <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition group">
+                                    <a href="{{ url_for('create_chat', friend_id=friend[1]) }}"
+                                       class="flex items-center gap-3 flex-1">
+                                        <div class="relative">
+                                            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center justify-center text-white font-semibold text-lg">
+                                                {{ friend[0][0]|upper }}
+                                            </div>
+                                            <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
                                         </div>
-                                        <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+                                        <div class="flex-1">
+                                            <h4 class="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                                                {{ friend[0] }}
+                                            </h4>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">Нажмите для чата</p>
+                                        </div>
+                                    </a>
+                                    <div class="friend-actions">
+                                        <a href="{{ url_for('call_page', friend_id=friend[1]) }}?initiator=true"
+                                           class="call-btn"
+                                           title="Позвонить">
+                                            <i class="fas fa-phone"></i>
+                                        </a>
+                                        <i class="fas fa-chevron-right text-gray-400 group-hover:text-blue-500 transition"></i>
                                     </div>
-                                    <div class="flex-1">
-                                        <h4 class="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                                            {{ friend[0] }}
-                                        </h4>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">Нажмите для чата</p>
-                                    </div>
-                                    <i class="fas fa-chevron-right text-gray-400 group-hover:text-blue-500 transition"></i>
-                                </a>
+                                </div>
                             {% endfor %}
                         {% else %}
                             <div class="text-center py-8">
@@ -755,6 +1100,32 @@
         </div>
     </div>
 
+    <!-- Call Notification -->
+    <div id="callNotification" class="call-notification hidden">
+        <div class="caller-info">
+            <div class="caller-avatar" id="callerAvatar">U</div>
+            <div>
+                <div class="caller-name" id="callerName">Пользователь</div>
+                <div class="call-type" id="callType">🎥 Видеозвонок</div>
+            </div>
+        </div>
+        <div class="ringing-animation">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span style="color: rgba(255,255,255,0.5); font-size: 14px; margin-left: 8px;">Входящий вызов...</span>
+        </div>
+        <div class="call-actions">
+            <button class="btn-accept" id="acceptCallBtn">
+                <i class="fas fa-phone mr-1"></i> Ответить
+            </button>
+            <button class="btn-reject" id="rejectCallBtn">
+                <i class="fas fa-times mr-1"></i> Отклонить
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== ВЕСЬ JS ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ==================== -->
     <script>
         // Инициализация WebSocket соединения
         const socket = io.connect(window.location.origin, {
@@ -767,22 +1138,18 @@
         const userId = {{ session['user_id'] | tojson }};
         let notificationSound = null;
         let isNotificationPermissionGranted = false;
+        let currentCall = null;
 
-        // Инициализация звука уведомления
         function initNotificationSound() {
             notificationSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
             notificationSound.volume = 0.3;
         }
 
-        // Запрос разрешения на уведомления
         function requestNotificationPermission() {
             if ('Notification' in window) {
                 if (Notification.permission === 'default') {
                     Notification.requestPermission().then(permission => {
                         isNotificationPermissionGranted = permission === 'granted';
-                        if (isNotificationPermissionGranted) {
-                            console.log('Разрешение на уведомления получено');
-                        }
                     });
                 } else {
                     isNotificationPermissionGranted = Notification.permission === 'granted';
@@ -790,7 +1157,6 @@
             }
         }
 
-        // Показать браузерное уведомление
         function showBrowserNotification(title, body) {
             if (isNotificationPermissionGranted) {
                 try {
@@ -800,12 +1166,7 @@
                         badge: '/static/favicon.ico',
                         tag: 'nana-notification'
                     });
-
-                    notification.onclick = function() {
-                        window.focus();
-                        notification.close();
-                    };
-
+                    notification.onclick = function() { window.focus(); notification.close(); };
                     setTimeout(notification.close.bind(notification), 5000);
                 } catch (e) {
                     console.log('Ошибка браузерного уведомления:', e);
@@ -813,7 +1174,6 @@
             }
         }
 
-        // Воспроизвести звук уведомления
         function playNotificationSound() {
             if (notificationSound) {
                 try {
@@ -825,29 +1185,19 @@
             }
         }
 
-        // Анимация появления уведомления
         function animateNotification() {
             const badge = document.querySelector('.notification-dot');
             if (badge) {
                 badge.style.animation = 'none';
-                setTimeout(() => {
-                    badge.style.animation = 'pulse 1.5s infinite';
-                }, 10);
+                setTimeout(() => { badge.style.animation = 'pulse 1.5s infinite'; }, 10);
             }
         }
 
-        // Обновить бейдж уведомлений в заголовке вкладки
         function updateTabBadge(count) {
-            if (count > 0) {
-                document.title = `(${count}) НаНа`;
-            } else {
-                document.title = 'НаНа';
-            }
+            document.title = count > 0 ? `(${count}) НаНа` : 'НаНа';
         }
 
-        // Показать всплывающее уведомление на странице
         function showToastNotification(content) {
-            // Создаем элемент тоста
             const toast = document.createElement('div');
             toast.className = 'fixed top-4 right-4 z-50 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-xl shadow-xl max-w-sm transform translate-x-full transition-transform duration-300';
             toast.innerHTML = `
@@ -865,47 +1215,28 @@
                     </button>
                 </div>
             `;
-
-            // Добавляем в DOM
             document.body.appendChild(toast);
-
-            // Анимация появления
-            setTimeout(() => {
-                toast.style.transform = 'translateX(0)';
-            }, 10);
-
-            // Автоматическое скрытие через 5 секунд
+            setTimeout(() => { toast.style.transform = 'translateX(0)'; }, 10);
             setTimeout(() => {
                 if (toast.parentElement) {
                     toast.style.transform = 'translateX(100%)';
-                    setTimeout(() => {
-                        if (toast.parentElement) {
-                            toast.remove();
-                        }
-                    }, 300);
+                    setTimeout(() => { if (toast.parentElement) toast.remove(); }, 300);
                 }
             }, 5000);
         }
 
-        // Обновить список уведомлений
         function updateNotificationsList(notifications) {
             const notificationsList = document.getElementById('notifications-list');
             if (!notificationsList) return;
-
             notificationsList.innerHTML = '';
-
             if (notifications && notifications.length > 0) {
                 notifications.forEach(notification => {
                     const li = document.createElement('li');
                     li.className = 'p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer';
-
                     const content = notification.content || notification[0];
                     const created_at = notification.created_at || notification[1];
                     const type = notification.type || 'system';
-
-                    const timeStr = created_at ?
-                        ` <span class="text-xs text-gray-500 dark:text-gray-400">(${new Date(created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})</span>` : '';
-
+                    const timeStr = created_at ? ` <span class="text-xs text-gray-500 dark:text-gray-400">(${new Date(created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})</span>` : '';
                     li.innerHTML = `
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full ${getNotificationColor(type)} flex items-center justify-center text-white">
@@ -917,7 +1248,6 @@
                             </div>
                         </div>
                     `;
-
                     notificationsList.appendChild(li);
                 });
             } else {
@@ -928,7 +1258,6 @@
             }
         }
 
-        // Получить цвет для типа уведомления
         function getNotificationColor(type) {
             const colors = {
                 'message': 'bg-gradient-to-r from-cyan-500 to-blue-500',
@@ -941,7 +1270,6 @@
             return colors[type] || colors['system'];
         }
 
-        // Получить иконку для типа уведомления
         function getNotificationIcon(type) {
             const icons = {
                 'message': 'fa-comment',
@@ -954,25 +1282,110 @@
             return icons[type] || 'fa-bell';
         }
 
-        // Обновить количество уведомлений в бейдже
         function updateNotificationBadge(count) {
             const badge = document.querySelector('.notification-dot');
             if (badge) {
                 badge.textContent = count > 0 ? count : '';
                 badge.style.display = count > 0 ? 'flex' : 'none';
             }
-
-            // Также обновляем в заголовке вкладки
             updateTabBadge(count);
         }
 
-        // Обработчики WebSocket событий
+        // ==================== ОБРАБОТЧИКИ ЗВОНКОВ ====================
+
+        function showCallNotification(data) {
+            const notification = document.getElementById('callNotification');
+            document.getElementById('callerName').textContent = data.caller_username || 'Пользователь';
+            document.getElementById('callerAvatar').textContent = (data.caller_username || 'U')[0].toUpperCase();
+            document.getElementById('callType').textContent = data.type === 'video' ? '🎥 Видеозвонок' : '📞 Голосовой звонок';
+            notification.classList.remove('hidden');
+            currentCall = {
+                call_id: data.call_id,
+                caller_id: data.caller_id,
+                type: data.type
+            };
+            playNotificationSound();
+        }
+
+        function hideCallNotification() {
+            document.getElementById('callNotification').classList.add('hidden');
+        }
+
+        // ==================== ОБРАБОТЧИКИ СОБЫТИЙ SOCKET.IO ====================
+
+        socket.on('incoming_call', function(data) {
+            if (data.caller_id != userId) {
+                console.log('Входящий звонок:', data);
+                showCallNotification(data);
+                showBrowserNotification('📞 Входящий звонок', `${data.caller_username} звонит вам`);
+            }
+        });
+
+        socket.on('call_accepted', function(data) {
+            console.log('Звонок принят:', data);
+            hideCallNotification();
+            if (data.call_id === currentCall?.call_id) {
+                const url = `/call/${currentCall.caller_id}?call_id=${currentCall.call_id}&initiator=false`;
+                window.open(url, '_blank');
+                currentCall = null;
+            }
+        });
+
+        socket.on('call_rejected', function(data) {
+            console.log('Звонок отклонен:', data);
+            hideCallNotification();
+            showToastNotification(`Звонок отклонен`);
+            currentCall = null;
+        });
+
+        socket.on('call_ended', function(data) {
+            console.log('Звонок завершен:', data);
+            hideCallNotification();
+            showToastNotification(`Звонок завершен`);
+            currentCall = null;
+        });
+
+        socket.on('call_initiated', function(data) {
+            console.log('Звонок инициирован:', data);
+            if (data.status === 'ringing') {
+                showToastNotification(`Ожидание ответа...`);
+            }
+        });
+
+        // ==================== ОБРАБОТЧИКИ КНОПОК ====================
+
+        document.getElementById('acceptCallBtn').addEventListener('click', function() {
+            if (currentCall) {
+                console.log('Принимаем звонок:', currentCall);
+                socket.emit('accept_call', {
+                    call_id: currentCall.call_id,
+                    caller_id: currentCall.caller_id
+                });
+                const url = `/call/${currentCall.caller_id}?call_id=${currentCall.call_id}&initiator=false`;
+                window.open(url, '_blank');
+                hideCallNotification();
+                currentCall = null;
+            }
+        });
+
+        document.getElementById('rejectCallBtn').addEventListener('click', function() {
+            if (currentCall) {
+                console.log('Отклоняем звонок:', currentCall);
+                socket.emit('reject_call', {
+                    call_id: currentCall.call_id,
+                    caller_id: currentCall.caller_id
+                });
+                hideCallNotification();
+                currentCall = null;
+            }
+        });
+
+        // ==================== ОСТАЛЬНЫЕ ОБРАБОТЧИКИ ====================
+
         socket.on('connect', () => {
             console.log('Подключено к WebSocket серверу');
             socket.emit('join_room', userId);
             socket.emit('user_online');
-
-            // Запрашиваем уведомления сразу после подключения
             fetch('/api/notifications/latest')
                 .then(response => response.json())
                 .then(data => {
@@ -986,7 +1399,6 @@
 
         socket.on('connect_error', (error) => {
             console.error('Ошибка WebSocket соединения:', error);
-            // Показываем уведомление о потере соединения
             showToastNotification('Потеряно соединение с сервером. Пытаемся переподключиться...');
         });
 
@@ -995,34 +1407,24 @@
             showToastNotification('Соединение восстановлено');
         });
 
-        // Основное событие для обновления уведомлений
         socket.on('update_notifications', function(data) {
             if (data.user_id != userId) return;
-
-            console.log('Обновление уведомлений в реальном времени:', data);
-
-            // Обновляем интерфейс
+            console.log('Обновление уведомлений:', data);
             if (data.notifications) {
                 updateNotificationsList(data.notifications);
             }
-
             if (data.unread_count !== undefined) {
                 updateNotificationBadge(data.unread_count);
             }
-
-            // Показываем визуальные эффекты для новых уведомлений
             if (data.notifications && data.notifications.length > 0) {
                 const latestNotification = data.notifications[0];
                 showToastNotification(latestNotification.content);
                 playNotificationSound();
                 animateNotification();
-
-                // Браузерное уведомление
                 showBrowserNotification('НаНа', latestNotification.content);
             }
         });
 
-        // Специфичные события для разных типов уведомлений
         socket.on('new_friend_request', function(data) {
             if (data.sender_id != userId) {
                 showToastNotification(`Новая заявка в друзья от ${data.sender_username}`);
@@ -1039,8 +1441,6 @@
             if (data.sender_id != userId) {
                 showToastNotification(`Новое сообщение от ${data.username}`);
                 playNotificationSound();
-
-                // Обновляем счетчик непрочитанных в чатах
                 const chatsList = document.getElementById('chats-list');
                 const chatItem = chatsList.querySelector(`[data-chat-id="${data.chat_id}"]`);
                 if (chatItem) {
@@ -1059,14 +1459,12 @@
         });
 
         socket.on('post_reaction_updated', function(data) {
-            // Обновляем UI реакции
             const post = document.querySelector(`.post-card[data-post-id="${data.post_id}"]`);
             if (post) {
                 const likeButton = post.querySelector('.like-btn');
                 const dislikeButton = post.querySelector('.dislike-btn');
                 const likeSpan = post.querySelector('.like-count');
                 const dislikeSpan = post.querySelector('.dislike-count');
-
                 if (likeButton && dislikeButton && likeSpan && dislikeSpan) {
                     likeButton.textContent = data.user_reaction === 'like' ? 'Не нравится' : 'Нравится';
                     dislikeButton.textContent = data.user_reaction === 'dislike' ? 'Не дизлайк' : 'Дизлайк';
@@ -1084,7 +1482,6 @@
         });
 
         socket.on('online_status', function(data) {
-            // Показать статус онлайн/оффлайн друзей
             console.log('Обновление статуса онлайн:', data);
         });
 
@@ -1109,13 +1506,10 @@
                         </div>
                     </div>
                 </div>
-
                 <p class="text-gray-800 dark:text-gray-200 mb-4 leading-relaxed">${data.content}</p>
-
                 ${data.image ? `<div class="rounded-xl overflow-hidden mb-4 border border-gray-200 dark:border-gray-700">
                     <img src="/static/avatars/${data.image}" alt="Изображение поста" class="w-full h-auto">
                 </div>` : ''}
-
                 <div class="flex gap-6 mt-4 items-center">
                     <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${data.id}">Нравится</button>
                     <span class="like-count text-gray-500 dark:text-gray-400">${data.likes} нравится</span>
@@ -1123,9 +1517,7 @@
                     <span class="dislike-count text-gray-500 dark:text-gray-400">${data.dislikes} дизлайков</span>
                     <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${data.id}">Комментировать</button>
                 </div>
-
                 <div class="latest-comment mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hidden" id="latest-comment-${data.id}"></div>
-
                 <div class="comments-section mt-4 hidden" id="comments-${data.id}">
                     <div class="comments-list space-y-3"></div>
                     <form class="comment-form mt-4 flex flex-col gap-4" data-post-id="${data.id}">
@@ -1139,22 +1531,19 @@
             attachReactionListeners();
         });
 
-        // Периодическая проверка новых уведомлений (фолбэк если WebSocket отключился)
+        // Периодическая проверка новых уведомлений
         function pollNotifications() {
             setInterval(() => {
                 fetch('/api/notifications/check')
                     .then(response => response.json())
                     .then(data => {
                         if (data.has_new) {
-                            // Запрашиваем полный список уведомлений
                             fetch('/api/notifications/latest')
                                 .then(response => response.json())
                                 .then(data => {
                                     if (data.notifications) {
                                         updateNotificationsList(data.notifications);
                                         updateNotificationBadge(data.unread_count);
-
-                                        // Показываем тост только для самого нового уведомления
                                         if (data.notifications && data.notifications.length > 0) {
                                             showToastNotification(data.notifications[0][0]);
                                             playNotificationSound();
@@ -1164,18 +1553,15 @@
                         }
                     })
                     .catch(console.error);
-            }, 30000); // Проверка каждые 30 секунд
+            }, 30000);
         }
 
         // Очистка уведомлений
         document.getElementById('clear-notifications')?.addEventListener('click', () => {
             const csrfToken = document.querySelector('#notifications-form input[name="csrf_token"]').value;
-
             fetch('/clear_notifications', {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken
-                }
+                headers: { 'X-CSRFToken': csrfToken }
             })
             .then(response => response.json())
             .then(data => {
@@ -1193,30 +1579,22 @@
             });
         });
 
-        // Инициализация при загрузке страницы
+        // Инициализация
         document.addEventListener('DOMContentLoaded', () => {
             initNotificationSound();
             requestNotificationPermission();
-
-            // Начинаем периодическую проверку (как фолбэк)
             pollNotifications();
-
-            // Проверяем фокус окна для показа уведомлений
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    // Когда пользователь вернулся на вкладку
                     updateTabBadge(0);
                     document.title = 'НаНа';
                 }
             });
-
-            // Обработка клика по уведомлениям
             document.getElementById('notifications-list')?.addEventListener('click', (e) => {
                 const listItem = e.target.closest('li');
                 if (listItem) {
                     const text = listItem.textContent;
                     if (text.includes('message') || text.includes('сообщение')) {
-                        // Если уведомление о сообщении, переходим в чаты
                         const chatsLink = document.querySelector('a[href*="/chat"]');
                         if (chatsLink) {
                             window.location.href = chatsLink.href;
@@ -1226,43 +1604,29 @@
             });
         });
 
-        // Обработка отключения
         window.addEventListener('beforeunload', () => {
             socket.emit('user_offline');
         });
 
-        // Добавить этот CSS для анимаций
+        // Стили для анимаций
         const style = document.createElement('style');
         style.textContent = `
             @keyframes slideIn {
                 from { transform: translateX(100%); opacity: 0; }
                 to { transform: translateX(0); opacity: 1; }
             }
-
             @keyframes slideOut {
                 from { transform: translateX(0); opacity: 1; }
                 to { transform: translateX(100%); opacity: 0; }
             }
-
             @keyframes pulse {
                 0% { transform: scale(1); }
                 50% { transform: scale(1.1); }
                 100% { transform: scale(1); }
             }
-
-            .notification-toast {
-                animation: slideIn 0.3s ease-out;
-            }
-
-            .notification-toast.hiding {
-                animation: slideOut 0.3s ease-in;
-            }
-
-            .notification-pulse {
-                animation: pulse 0.5s ease-in-out 3;
-            }
-
-            /* Стиль для новых уведомлений */
+            .notification-toast { animation: slideIn 0.3s ease-out; }
+            .notification-toast.hiding { animation: slideOut 0.3s ease-in; }
+            .notification-pulse { animation: pulse 0.5s ease-in-out 3; }
             .new-notification {
                 border-left: 4px solid #3b82f6;
                 background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), transparent);
@@ -1270,13 +1634,12 @@
         `;
         document.head.appendChild(style);
 
-        // Остальной код (для постов, комментариев и т.д.)
+        // Остальные функции
         function attachReactionListeners() {
             document.querySelectorAll('.like-btn').forEach(button => {
                 button.removeEventListener('click', handleLikeClick);
                 button.addEventListener('click', handleLikeClick);
             });
-
             document.querySelectorAll('.dislike-btn').forEach(button => {
                 button.removeEventListener('click', handleDislikeClick);
                 button.addEventListener('click', handleDislikeClick);
@@ -1288,9 +1651,7 @@
             const csrfToken = document.querySelector('#notifications-form input[name="csrf_token"]').value;
             fetch(`/like_post/${postId}`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken
-                }
+                headers: { 'X-CSRFToken': csrfToken }
             })
             .then(response => response.json())
             .then(data => {
@@ -1319,9 +1680,7 @@
             const csrfToken = document.querySelector('#notifications-form input[name="csrf_token"]').value;
             fetch(`/dislike_post/${postId}`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken
-                }
+                headers: { 'X-CSRFToken': csrfToken }
             })
             .then(response => response.json())
             .then(data => {
@@ -1375,17 +1734,13 @@
                 body: JSON.stringify({ content })
             })
             .then(response => {
-                if (!response.ok) {
-                    throw new Error('Ошибка сети');
-                }
+                if (!response.ok) throw new Error('Ошибка сети');
                 return response.json();
             })
             .then(data => {
                 if (data.status === 'success') {
-                    const originalPost = document.getElementById('originalPost');
-                    const enhancedPost = document.getElementById('enhancedPost');
-                    originalPost.textContent = data.original_content || 'Нет оригинального контента';
-                    enhancedPost.textContent = data.enhanced_content || data.original_content + '.';
+                    document.getElementById('originalPost').textContent = data.original_content || 'Нет оригинального контента';
+                    document.getElementById('enhancedPost').textContent = data.enhanced_content || data.original_content + '.';
                     document.getElementById('postModal').classList.remove('hidden');
                 } else {
                     alert('Ошибка улучшения поста: ' + (data.message || 'Неизвестная ошибка'));
@@ -1403,9 +1758,7 @@
             const csrfToken = document.querySelector('#notifications-form input[name="csrf_token"]').value;
             fetch(`/get_more_posts?offset=${currentOffset}`, {
                 method: 'GET',
-                headers: {
-                    'X-CSRFToken': csrfToken
-                }
+                headers: { 'X-CSRFToken': csrfToken }
             })
             .then(response => response.json())
             .then(data => {
@@ -1431,13 +1784,10 @@
                                     </div>
                                 </div>
                             </div>
-
                             <p class="text-gray-800 dark:text-gray-200 mb-4 leading-relaxed">${post.content}</p>
-
                             ${post.image ? `<div class="rounded-xl overflow-hidden mb-4 border border-gray-200 dark:border-gray-700">
                                 <img src="${post.image}" alt="Изображение поста" class="w-full h-auto">
                             </div>` : ''}
-
                             <div class="flex gap-6 mt-4 items-center">
                                 <button class="like-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${post.id}">Нравится</button>
                                 <span class="like-count text-gray-500 dark:text-gray-400">${post.likes} нравится</span>
@@ -1445,9 +1795,7 @@
                                 <span class="dislike-count text-gray-500 dark:text-gray-400">${post.dislikes} дизлайков</span>
                                 <button class="comment-btn text-blue-500 dark:text-blue-400 font-semibold hover:text-blue-600 dark:hover:text-blue-300 transition duration-300" data-post-id="${post.id}">Комментировать</button>
                             </div>
-
                             <div class="latest-comment mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hidden" id="latest-comment-${post.id}"></div>
-
                             <div class="comments-section mt-4 hidden" id="comments-${post.id}">
                                 <div class="comments-list space-y-3"></div>
                                 <form class="comment-form mt-4 flex flex-col gap-4" data-post-id="${post.id}">
@@ -1558,9 +1906,7 @@
             const csrfToken = document.querySelector('#notifications-form input[name="csrf_token"]').value;
             fetch(`/view_story/${storyId}`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken
-                }
+                headers: { 'X-CSRFToken': csrfToken }
             })
             .then(response => response.json())
             .then(data => {
@@ -1630,7 +1976,6 @@
             }
         }
 
-        // Обработчик для загрузки изображения в пост
         document.getElementById('postImageInput')?.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -1656,4 +2001,3 @@
     </script>
 </body>
 </html>
-
