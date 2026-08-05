@@ -44,6 +44,8 @@
             transition: all 0.3s ease;
             background: white;
             color: #1f2937;
+            width: 100%;
+            padding: 12px 16px;
         }
 
         .dark .input-modern {
@@ -107,9 +109,19 @@
             z-index: 1000;
         }
 
-        /* Smooth transitions */
         * {
             transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #ef4444;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
     </style>
 </head>
@@ -146,6 +158,25 @@
             <div class="bg-white dark:bg-gray-800 p-8">
                 <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6 text-center">Войти в аккаунт</h2>
 
+                <!-- Ошибка -->
+                {% if error %}
+                    <div class="error-message mb-4">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ error }}
+                    </div>
+                {% endif %}
+
+                <!-- Flash сообщения -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="mb-4 p-3 rounded-xl {% if category == 'success' %}bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400{% else %}bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
                 <form action="{{ url_for('login') }}" method="POST" class="space-y-6">
                     {{ form.hidden_tag() }}
 
@@ -153,18 +184,20 @@
                         <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             <i class="fas fa-user mr-2 text-blue-500"></i>Имя пользователя
                         </label>
-                        <input type="text" id="username" name="username" required
-                               class="input-modern w-full px-4 py-3"
-                               placeholder="Введите имя пользователя">
+                        {{ form.username(class="input-modern", placeholder="Введите имя пользователя", id="username") }}
+                        {% if form.username.errors %}
+                            <p class="text-red-500 text-sm mt-1">{{ form.username.errors[0] }}</p>
+                        {% endif %}
                     </div>
 
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             <i class="fas fa-lock mr-2 text-blue-500"></i>Пароль
                         </label>
-                        <input type="password" id="password" name="password" required
-                               class="input-modern w-full px-4 py-3"
-                               placeholder="Введите пароль">
+                        {{ form.password(class="input-modern", placeholder="Введите пароль", id="password") }}
+                        {% if form.password.errors %}
+                            <p class="text-red-500 text-sm mt-1">{{ form.password.errors[0] }}</p>
+                        {% endif %}
                     </div>
 
                     <button type="submit"
@@ -174,23 +207,11 @@
                     </button>
                 </form>
 
-                <!-- Сообщения об ошибках -->
-                {% with messages = get_flashed_messages() %}
-                    {% if messages %}
-                        <div class="mt-6 p-4 rounded-xl bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border border-red-200 dark:border-red-800">
-                            <div class="flex items-center gap-2 text-red-600 dark:text-red-400">
-                                <i class="fas fa-exclamation-circle"></i>
-                                <span class="font-medium">{{ messages[0] }}</span>
-                            </div>
-                        </div>
-                    {% endif %}
-                {% endwith %}
-
                 <!-- Ссылка на регистрацию -->
                 <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
                     <p class="text-gray-600 dark:text-gray-400">
                         Нет аккаунта?
-                        <a href="/register" class="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition ml-1">
+                        <a href="{{ url_for('register') }}" class="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition ml-1">
                             <i class="fas fa-user-plus mr-1"></i>Создать аккаунт
                         </a>
                     </p>
@@ -207,7 +228,7 @@
                         <div class="text-xs text-gray-600 dark:text-gray-400">Постов</div>
                     </div>
                     <div class="text-center p-3 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-                        <div class="text-xl font-bold text-green-600 dark:text-green-400">24/7 (СКОРО)</div>
+                        <div class="text-xl font-bold text-green-600 dark:text-green-400">24/7</div>
                         <div class="text-xs text-gray-600 dark:text-gray-400">Активны</div>
                     </div>
                 </div>
@@ -241,7 +262,6 @@
         const themeToggle = document.getElementById('theme-toggle');
         const themeIcon = document.getElementById('theme-icon');
 
-        // Проверка сохраненной темы или системных настроек
         if (localStorage.getItem('color-theme') === 'dark' ||
             (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
@@ -267,28 +287,7 @@
             }
         });
 
-        // Добавление анимации к карточке входа
-        const loginCard = document.querySelector('.login-card');
-        loginCard.addEventListener('mouseenter', () => {
-            loginCard.style.transform = 'translateY(-5px) scale(1.01)';
-        });
-
-        loginCard.addEventListener('mouseleave', () => {
-            loginCard.style.transform = 'translateY(0) scale(1)';
-        });
-
-        // Добавление эффектов при фокусе на поля ввода
-        document.querySelectorAll('.input-modern').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.classList.add('ring-2', 'ring-blue-200', 'dark:ring-blue-800', 'rounded-xl', 'p-1');
-            });
-
-            input.addEventListener('blur', function() {
-                this.parentElement.classList.remove('ring-2', 'ring-blue-200', 'dark:ring-blue-800', 'rounded-xl', 'p-1');
-            });
-        });
-
-        // Автофокус на поле имени пользователя
+        // Автофокус
         document.addEventListener('DOMContentLoaded', () => {
             const usernameField = document.getElementById('username');
             if (usernameField) {
