@@ -22,10 +22,6 @@
             --accent: #10b981;
         }
 
-        .story-gradient {
-            background: linear-gradient(45deg, #8b5cf6, #3b82f6, #06b6d4);
-        }
-
         .btn-primary {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
@@ -38,19 +34,6 @@
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, var(--accent), #0ea5e9);
-            color: white;
-            font-weight: 600;
-            border: none;
-            transition: all 0.3s ease;
-        }
-
-        .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
 
         .input-modern {
@@ -79,34 +62,10 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .post-card:hover {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            transform: translateY(-2px);
-        }
-
         .dark .post-card:hover {
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
         }
 
-        .notification-dot {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        .gradient-text {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            font-weight: 700;
-        }
-
-        /* Стили для сообщений */
         .message-bubble {
             max-width: 70%;
             padding: 12px 16px;
@@ -140,7 +99,6 @@
             display: block;
         }
 
-        /* Кастомный скроллбар */
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
         }
@@ -159,29 +117,71 @@
             background: #374151;
         }
 
-        /* Анимация для новых сообщений */
         @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .message-new {
             animation: slideIn 0.3s ease-out;
         }
 
-        /* Фикс для текста */
         textarea, input[type="text"] {
             color: #1f2937 !important;
         }
 
         .dark textarea, .dark input[type="text"] {
             color: #f9fafb !important;
+        }
+
+        .call-btn-chat {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        .call-btn-chat:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .call-btn-video-chat {
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        .call-btn-video-chat:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .chat-header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
         }
     </style>
 </head>
@@ -274,6 +274,29 @@
                         </a>
                     </div>
                 </div>
+
+                <!-- Call Actions -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg post-card">
+                    <h3 class="text-xl font-bold flex items-center gap-3 mb-6 text-gray-800 dark:text-gray-100">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-white">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        Calls
+                    </h3>
+
+                    <div class="space-y-3">
+                        <a href="{{ url_for('call_page', friend_id=other_user_id) }}?initiator=true"
+                           class="call-btn-chat w-full justify-center">
+                            <i class="fas fa-phone"></i>
+                            Voice Call
+                        </a>
+                        <a href="{{ url_for('call_page', friend_id=other_user_id) }}?initiator=true"
+                           class="call-btn-video-chat w-full justify-center">
+                            <i class="fas fa-video"></i>
+                            Video Call
+                        </a>
+                    </div>
+                </div>
             </div>
 
             <!-- Main Chat Area -->
@@ -290,7 +313,15 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-3">
+                        <div class="chat-header-actions">
+                            <a href="{{ url_for('call_page', friend_id=other_user_id) }}?initiator=true"
+                               class="call-btn-chat">
+                                <i class="fas fa-phone"></i>
+                            </a>
+                            <a href="{{ url_for('call_page', friend_id=other_user_id) }}?initiator=true"
+                               class="call-btn-video-chat">
+                                <i class="fas fa-video"></i>
+                            </a>
                             <div class="text-sm font-medium px-3 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300">
                                 <i class="fas fa-circle mr-1 text-xs"></i>
                                 Online
@@ -332,7 +363,7 @@
                         {% endif %}
                     </div>
 
-                    <!-- Message Form -->
+                    <!-- Message Form с CSRF токеном -->
                     <form id="messageForm" class="space-y-4">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -405,6 +436,7 @@
         const userId = {{ user_id | tojson }};
         const chatId = {{ chat_id | tojson }};
         const partnerName = "{{ chat[1] }}";
+        const otherUserId = {{ other_user_id | tojson }};
 
         socket.on('connect', () => {
             console.log('Connected to SocketIO server');
@@ -421,7 +453,6 @@
                 console.log('New message received:', data);
                 const messagesContainer = document.getElementById('messages');
 
-                // Remove empty state if present
                 const emptyState = messagesContainer.querySelector('.flex.flex-col.items-center');
                 if (emptyState) {
                     emptyState.remove();
@@ -452,8 +483,6 @@
                     </div>
                 `;
                 messagesContainer.appendChild(messageDiv);
-
-                // Scroll to bottom
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
         });
@@ -472,7 +501,50 @@
             }
         });
 
-        // Handle form submission
+        // ==================== ОБРАБОТЧИКИ ЗВОНКОВ ====================
+        socket.on('incoming_call', function(data) {
+            if (data.caller_id === otherUserId || data.caller_id === userId) {
+                console.log('Incoming call in chat:', data);
+                showChatNotification(`📞 ${data.caller_username} звонит вам!`);
+            }
+        });
+
+        function showChatNotification(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-20 right-4 z-50 bg-gradient-to-r from-green-600 to-emerald-700 text-white p-4 rounded-xl shadow-xl max-w-sm transform translate-x-full transition-transform duration-300';
+            toast.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <i class="fas fa-phone text-white"></i>
+                    </div>
+                    <div>
+                        <p class="font-medium">Входящий звонок</p>
+                        <p class="text-sm opacity-90">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-white/70 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.transform = 'translateX(0)';
+            }, 10);
+
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.style.transform = 'translateX(100%)';
+                    setTimeout(() => {
+                        if (toast.parentElement) {
+                            toast.remove();
+                        }
+                    }, 300);
+                }
+            }, 6000);
+        }
+
+        // Handle form submission с CSRF токеном
         document.getElementById('messageForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const content = document.getElementById('messageContent').value.trim();
@@ -480,7 +552,10 @@
                 alert('Please enter a message.');
                 return;
             }
-            const csrfToken = document.querySelector('#messageForm input[name="csrf_token"]').value;
+
+            // Получаем CSRF токен
+            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+
             fetch('/send_message', {
                 method: 'POST',
                 headers: {
@@ -521,8 +596,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             const messagesContainer = document.getElementById('messages');
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-            // Auto-focus message input
             document.getElementById('messageContent').focus();
         });
 
